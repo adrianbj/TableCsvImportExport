@@ -22,7 +22,7 @@ class TableCsvImport extends WireData implements Module {
             'title' => 'Table CVS Import',
             'summary' => 'Adds the ability to add rows to a Table field by importing CSV formatted content.',
             'href' => '',
-            'version' => 1,
+            'version' => 2,
             'permanent' => false,
             'autoload' => true,
             'singular' => true,
@@ -61,12 +61,28 @@ class TableCsvImport extends WireData implements Module {
 
         $form->add($fieldset);
 
+        /*$fieldset = $this->modules->get("InputfieldFieldset");
+        $fieldset->attr('id', 'export_csv');
+        $fieldset->label = "Export CSV";
+        $fieldset->description = "Export the content of this table to a CSV file";
+        $fieldset->collapsed = Inputfield::collapsedYes;
+
+        $f = $this->modules->get("InputfieldButton");
+        $f->name = 'export_button';
+        $f->value = $this->_x('Export as CSV', 'button');
+        $f->attr('class', 'ui-button ui-widget ui-corner-all ui-state-default InputfieldChildTableAddRow');
+        $fieldset->add($f);
+
+        $form->add($fieldset);*/
+
         return $event->return .= $form->render();
 
     }
 
 
     public function processImport(HookEvent $event) {
+
+        if($this->input->post->csv_data == '') return;
 
         $field = $event->object;
         $fieldName = $field->name;
