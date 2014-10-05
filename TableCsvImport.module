@@ -1,0 +1,102 @@
+<?php
+
+/**
+ * ProcessWire Modules Migrator
+ * by Adrian Jones
+ *
+ * Adds the ability to add rows to a Table field by importing CSV formatted content.
+ *
+ * ProcessWire 2.x
+ * Copyright (C) 2011 by Ryan Cramer
+ * Licensed under GNU/GPL v2, see LICENSE.TXT
+ *
+ * http://www.processwire.com
+ * http://www.ryancramer.com
+ *
+ */
+
+class TableCsvImport extends WireData implements Module {
+
+	public static function getModuleInfo() {
+		return array(
+			'title' => 'Table CVS Import',
+			'summary' => 'Adds the ability to add rows to a Table field by importing CSV formatted content.',
+			'href' => '',
+			'version' => 1,
+			'permanent' => false,
+			'autoload' => true,
+			'singular' => true,
+		);
+	}
+
+	public function init() {
+		$this->addHookAfter('InputfieldTable::render', $this, 'addImport');
+		$this->addHookAfter('InputfieldTable::processInput', $this, 'processImport');
+	}
+
+	public function addImport(HookEvent $event) {
+
+        $form = $this->modules->get("InputfieldForm");
+        $form->method = 'post';
+
+        $fieldset = $this->modules->get("InputfieldFieldset");
+        $fieldset->attr('id', 'import_csv');
+        $fieldset->label = "Import CSV";
+        $fieldset->description = "The structure of the CSV must match the table fields. Import will happen on page save.";
+        $fieldset->collapsed = Inputfield::collapsedYes;
+
+        $f = $this->modules->get("InputfieldSelect");
+        $f->name = 'append_overwrite';
+        $f->label = 'Append or Overwrite';
+        $f->description = "Determines whether to append new rows, or overwrite all existing rows.";
+        $f->required = true;
+		$f->addOption("append", "Append");
+		$f->addOption("overwrite", "Overwrite");
+        $fieldset->add($f);
+
+        $f = $this->modules->get("InputfieldTextarea");
+        $f->name = 'csv_data';
+        $f->label = 'Paste in CSV Data';
+        $fieldset->add($f);
+
+        $form->add($fieldset);
+
+		return $event->return .= $form->render();
+
+	}
+
+
+	public function processImport(HookEvent $event) {
+
+		$field = $event->object;
+		$fieldName = $field->name;
+
+		$p = $this->pages->get((int) $this->input->id);
+
+		$i=0;
+		foreach($p->$fieldName->labels as $subfield){
+			$subfieldNames[$i] = strtolower(str_replace(" ","_", $subfield));
+			$i++;
+		}
+
+        if($this->input->post->append_overwrite == 'overwrite') $p->$fieldName->removeAll();
+
+		$rows = trim(preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n", $this->input->post->csv_data),"\n"); // remove any blank lines from the textarea
+
+        foreach(explode("\n",$rows) as $row){
+
+			$data = str_getcsv($row);
+
+			$tableEntry = $p->$fieldName->makeBlankItem();
+
+            foreach($data as $subfieldKey => $fieldValue){
+                if($subfieldNames[$subfieldKey] != 'data') $tableEntry->$subfieldNames[$subfieldKey] = $fieldValue;
+            }
+            $p->$fieldName->add($tableEntry);
+            $p->save($fieldName);
+
+		}
+
+	}
+
+}
