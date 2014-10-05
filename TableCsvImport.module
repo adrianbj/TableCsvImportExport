@@ -17,24 +17,24 @@
 
 class TableCsvImport extends WireData implements Module {
 
-	public static function getModuleInfo() {
-		return array(
-			'title' => 'Table CVS Import',
-			'summary' => 'Adds the ability to add rows to a Table field by importing CSV formatted content.',
-			'href' => '',
-			'version' => 1,
-			'permanent' => false,
-			'autoload' => true,
-			'singular' => true,
-		);
-	}
+    public static function getModuleInfo() {
+        return array(
+            'title' => 'Table CVS Import',
+            'summary' => 'Adds the ability to add rows to a Table field by importing CSV formatted content.',
+            'href' => '',
+            'version' => 1,
+            'permanent' => false,
+            'autoload' => true,
+            'singular' => true,
+        );
+    }
 
-	public function init() {
-		$this->addHookAfter('InputfieldTable::render', $this, 'addImport');
-		$this->addHookAfter('InputfieldTable::processInput', $this, 'processImport');
-	}
+    public function init() {
+        $this->addHookAfter('InputfieldTable::render', $this, 'addImport');
+        $this->addHookAfter('InputfieldTable::processInput', $this, 'processImport');
+    }
 
-	public function addImport(HookEvent $event) {
+    public function addImport(HookEvent $event) {
 
         $form = $this->modules->get("InputfieldForm");
         $form->method = 'post';
@@ -50,8 +50,8 @@ class TableCsvImport extends WireData implements Module {
         $f->label = 'Append or Overwrite';
         $f->description = "Determines whether to append new rows, or overwrite all existing rows.";
         $f->required = true;
-		$f->addOption("append", "Append");
-		$f->addOption("overwrite", "Overwrite");
+        $f->addOption("append", "Append");
+        $f->addOption("overwrite", "Overwrite");
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldTextarea");
@@ -61,33 +61,33 @@ class TableCsvImport extends WireData implements Module {
 
         $form->add($fieldset);
 
-		return $event->return .= $form->render();
+        return $event->return .= $form->render();
 
-	}
+    }
 
 
-	public function processImport(HookEvent $event) {
+    public function processImport(HookEvent $event) {
 
-		$field = $event->object;
-		$fieldName = $field->name;
+        $field = $event->object;
+        $fieldName = $field->name;
 
-		$p = $this->pages->get((int) $this->input->id);
+        $p = $this->pages->get((int) $this->input->id);
 
-		$i=0;
-		foreach($p->$fieldName->labels as $subfield){
-			$subfieldNames[$i] = strtolower(str_replace(" ","_", $subfield));
-			$i++;
-		}
+        $i=0;
+        foreach($p->$fieldName->labels as $subfield){
+            $subfieldNames[$i] = strtolower(str_replace(" ","_", $subfield));
+            $i++;
+        }
 
         if($this->input->post->append_overwrite == 'overwrite') $p->$fieldName->removeAll();
 
-		$rows = trim(preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n", $this->input->post->csv_data),"\n"); // remove any blank lines from the textarea
+        $rows = trim(preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n", $this->input->post->csv_data),"\n"); // remove any blank lines from the textarea
 
         foreach(explode("\n",$rows) as $row){
 
-			$data = str_getcsv($row);
+            $data = str_getcsv($row);
 
-			$tableEntry = $p->$fieldName->makeBlankItem();
+            $tableEntry = $p->$fieldName->makeBlankItem();
 
             foreach($data as $subfieldKey => $fieldValue){
                 if($subfieldNames[$subfieldKey] != 'data') $tableEntry->$subfieldNames[$subfieldKey] = $fieldValue;
@@ -95,8 +95,8 @@ class TableCsvImport extends WireData implements Module {
             $p->$fieldName->add($tableEntry);
             $p->save($fieldName);
 
-		}
+        }
 
-	}
+    }
 
 }
