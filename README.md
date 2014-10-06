@@ -1,5 +1,5 @@
-TableCsvImport
-==============
+Table CSV Import / Export
+==========================
 
 Processwire module to add rows to a Table field by importing CSV formatted content. Also provides an export button to download the contents of the table in CSV.
 
