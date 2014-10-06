@@ -1,10 +1,10 @@
 <?php
 
 /**
- * ProcessWire Modules Migrator
+ * ProcessWire Table CSV Import / Export
  * by Adrian Jones
  *
- * Adds the ability to add rows to a Table field by importing CSV formatted content.
+ * Adds the ability to add rows to a Table field by importing CSV formatted content. Also adds an export button to download data from table.
  *
  * ProcessWire 2.x
  * Copyright (C) 2011 by Ryan Cramer
@@ -15,17 +15,19 @@
  *
  */
 
-class TableCsvImport extends WireData implements Module {
+class TableCsvImportExport extends WireData implements Module {
 
     public static function getModuleInfo() {
         return array(
-            'title' => 'Table CVS Import',
-            'summary' => 'Adds the ability to add rows to a Table field by importing CSV formatted content.',
+            'title' => 'Table CVS Import / Export',
+            'summary' => 'Adds the ability to add rows to a Table field by importing CSV formatted content. Also adds an export button to download data from table.',
             'href' => '',
             'version' => 2,
             'permanent' => false,
             'autoload' => true,
             'singular' => true,
+            'requires' => array('ProcessTableCsvExport'),
+            'installs' => array('ProcessTableCsvExport')
         );
     }
 
@@ -35,6 +37,10 @@ class TableCsvImport extends WireData implements Module {
     }
 
     public function addImport(HookEvent $event) {
+
+        $conf = $this->getModuleInfo();
+        $version = (int) $conf['version'];
+        wire("config")->scripts->add($this->config->urls->TableCsvImportExport . "TableCsvImportExport.js?v={$version}");
 
         $form = $this->modules->get("InputfieldForm");
         $form->method = 'post';
@@ -61,7 +67,7 @@ class TableCsvImport extends WireData implements Module {
 
         $form->add($fieldset);
 
-        /*$fieldset = $this->modules->get("InputfieldFieldset");
+        $fieldset = $this->modules->get("InputfieldFieldset");
         $fieldset->attr('id', 'export_csv');
         $fieldset->label = "Export CSV";
         $fieldset->description = "Export the content of this table to a CSV file";
@@ -70,10 +76,18 @@ class TableCsvImport extends WireData implements Module {
         $f = $this->modules->get("InputfieldButton");
         $f->name = 'export_button';
         $f->value = $this->_x('Export as CSV', 'button');
-        $f->attr('class', 'ui-button ui-widget ui-corner-all ui-state-default InputfieldChildTableAddRow');
+        $f->attr('class', 'ui-button ui-widget ui-corner-all ui-state-default export_csv');
+        $f->attr('data-adminurl', $this->pages->get(2)->name);
+        $f->attr('data-pageid', (int) $this->input->id);
+        $f->attr('data-fieldname', $event->object->name);
         $fieldset->add($f);
 
-        $form->add($fieldset);*/
+        $f = $this->modules->get("InputfieldMarkup");
+        $f->attr('name', 'iframe');
+        $f->value = "<iframe id='download' src=''></iframe>";
+        $fieldset->add($f);
+
+        $form->add($fieldset);
 
         return $event->return .= $form->render();
 
@@ -84,8 +98,7 @@ class TableCsvImport extends WireData implements Module {
 
         if($this->input->post->csv_data == '') return;
 
-        $field = $event->object;
-        $fieldName = $field->name;
+        $fieldName = $event->object->name;
 
         $p = $this->pages->get((int) $this->input->id);
 

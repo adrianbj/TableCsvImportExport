@@ -1,0 +1,128 @@
+<?php
+
+/**
+ * ProcessWire Table CSV Export Helper
+ * by Adrian Jones
+ *
+ * Helper process module for generating CSV from a Table field
+ *
+ * ProcessWire 2.x
+ * Copyright (C) 2011 by Ryan Cramer
+ * Licensed under GNU/GPL v2, see LICENSE.TXT
+ *
+ * http://www.processwire.com
+ * http://www.ryancramer.com
+ *
+ */
+
+class ProcessTableCsvExport extends Process implements Module {
+
+    /**
+     * getModuleInfo is a module required by all modules to tell ProcessWire about them
+     *
+     * @return array
+     *
+     */
+    public static function getModuleInfo() {
+        return array(
+            'title' => __('Process Table CSV Export'),
+            'version' => 1,
+            'summary' => __('Helper module for creating CSV to export'),
+            'singular' => true,
+            'autoload' => false
+            );
+    }
+
+    /**
+     * Name used for the page created in the admin
+     *
+     */
+    const adminPageName = 'table-csv-export';
+
+
+
+    /**
+     * Initialize the module
+     *
+     */
+    public function init() {
+        parent::init();
+    }
+
+    /**
+     * Executed when root url for module is accessed
+     *
+     */
+    public function ___execute() {
+
+        $p = wire('pages')->get((int) wire('input')->get->pid);
+        $p->of(true); //needed to have dates etc formatted in the CSV
+        $fieldName = wire('input')->get->fn;
+
+        $csv = '';
+        foreach($p->$fieldName as $row){
+            foreach($row as $name => $value){
+                if($name!='id') $csv .= $value . ',';
+            }
+            $csv = rtrim($csv,",") . "\r\n";
+        }
+
+        header("Content-type: text/csv");
+        header("Content-Disposition: attachment; filename=$fieldName.csv");
+        header("Pragma: no-cache");
+        header("Expires: 0");
+
+        echo trim(preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n", $csv),"\n");exit;
+    }
+
+
+
+    /**
+     * Install the module and create the page where it lives
+     *
+     */
+    public function ___install() {
+
+        $page = $this->getInstalledPage();
+        $this->message("Installed to {$page->path}");
+
+    }
+
+    /**
+     * Return the page that this Process is installed on
+     *
+     */
+    protected function getInstalledPage() {
+
+        $parent = $this->pages->get("name=page,parent=".$this->config->adminRootPageID);
+        $page = $parent->child("name=" . self::adminPageName);
+
+        if(!$page->id) {
+            $page = new Page();
+            $page->parent = $parent;
+            $page->template = $this->templates->get('admin');
+            $page->name = self::adminPageName;
+            $page->title = "Table CSV Export";
+            $page->process = $this;
+            $page->status = Page::statusHidden;
+            $page->sort = $parent->numChildren;
+            $page->save();
+        }
+
+        return $page;
+    }
+
+    /**
+     * Uninstall the module
+     *
+     */
+    public function ___uninstall() {
+        $page = $this->getInstalledPage();
+        if($page->id) {
+            $this->message("Removed {$page->path}");
+            $this->pages->delete($page);
+        }
+    }
+
+
+}
