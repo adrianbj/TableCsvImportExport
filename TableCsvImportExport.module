@@ -22,12 +22,11 @@ class TableCsvImportExport extends WireData implements Module {
             'title' => 'Table CVS Import / Export',
             'summary' => 'Adds the ability to add rows to a Table field by importing CSV formatted content. Also adds an export button to download data from table.',
             'href' => '',
-            'version' => 3,
+            'version' => 4,
             'permanent' => false,
             'autoload' => true,
             'singular' => true,
-            'requires' => array('ProcessTableCsvExport'),
-            'installs' => array('ProcessTableCsvExport')
+            'installs' => 'ProcessTableCsvExport'
         );
     }
 
