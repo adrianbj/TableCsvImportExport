@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module {
             'title' => 'Table CVS Import / Export',
             'summary' => 'Adds the ability to add rows to a Table field by importing CSV formatted content. Also adds an export button to download data from table.',
             'href' => '',
-            'version' => 9,
+            'version' => 10,
             'permanent' => false,
             'autoload' => true,
             'singular' => true,
@@ -142,7 +142,6 @@ class TableCsvImportExport extends WireData implements Module {
         $f->name = 'export_button';
         $f->value = $this->_x('Export as CSV', 'button');
         $f->attr('class', 'ui-button ui-widget ui-corner-all ui-state-default export_csv');
-        $f->attr('data-adminurl', $this->pages->get(2)->name);
         $f->attr('data-pageid', (int) $this->input->id);
         $f->attr('data-fieldname', $event->object->name);
         $fieldset->add($f);
