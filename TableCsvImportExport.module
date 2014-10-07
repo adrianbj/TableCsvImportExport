@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module {
             'title' => 'Table CVS Import / Export',
             'summary' => 'Adds the ability to add rows to a Table field by importing CSV formatted content. Also adds an export button to download data from table.',
             'href' => '',
-            'version' => 8,
+            'version' => 9,
             'permanent' => false,
             'autoload' => true,
             'singular' => true,
@@ -66,20 +66,27 @@ class TableCsvImportExport extends WireData implements Module {
         $f->label = __('Columns separated with');
         $f->notes = __('For tab separated, enter: tab');
         $f->value = ',';
-        $f->columnWidth = 33;
+        $f->columnWidth = 25;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldText");
         $f->name = 'import_column_enclosure';
         $f->label = __('Column enclosure');
         $f->value = '"';
-        $f->columnWidth = 34;
+        $f->columnWidth = 25;
+        $fieldset->add($f);
+
+        $f = $this->modules->get("InputfieldCheckbox");
+        $f->name = 'convert_decimals';
+        $f->label = __('Convert comma decimals to dots.');
+        $f->notes = __('eg. 123,45 is converted to 123.45');
+        $f->columnWidth = 25;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldCheckbox");
         $f->name = 'import_names_first_row';
-        $f->label = __('Ignore the first row as it contains column names');
-        $f->columnWidth = 33;
+        $f->label = __('Ignore the first row (column names)');
+        $f->columnWidth = 25;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldTextarea");
@@ -167,7 +174,19 @@ class TableCsvImportExport extends WireData implements Module {
 
         if($this->input->post->append_overwrite == 'overwrite') $p->$fieldName->removeAll();
 
-        $rows = trim(preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n", $this->input->post->csv_data),"\n"); // remove any blank lines from the textarea
+
+        $csvFile = $this->input->post->csv_upload;
+        $csvData = $this->input->post->csv_data;
+
+        if(count($csvFile)) {
+            $csvFile = $csvFile->first();
+            $csvFile->rename("data.csv");
+            $csvFilename = $csvFile->filename;
+            $csvData = file_get_contents($csvFilename);
+        }
+
+
+        $rows = trim(preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n", $csvData),"\n"); // remove any blank lines from the textarea
 
         $x=0;
         foreach(explode("\n",$rows) as $row){
@@ -181,13 +200,23 @@ class TableCsvImportExport extends WireData implements Module {
             $tableEntry = $p->$fieldName->makeBlankItem();
 
             foreach($data as $subfieldKey => $fieldValue){
-                if($subfieldNames[$subfieldKey] != 'data') $tableEntry->$subfieldNames[$subfieldKey] = $fieldValue;
+                if($subfieldNames[$subfieldKey] != 'data') $tableEntry->$subfieldNames[$subfieldKey] = $this->input->post->convert_decimals == 1 ? $this->convertDecimals($fieldValue) : $fieldValue;
             }
             $p->$fieldName->add($tableEntry);
             $p->save($fieldName);
 
         }
 
+    }
+
+    public function convertDecimals($value){
+        // is the first character a number ?
+        if(ctype_digit(substr($value, 0, 1))) {
+          // 123,45 -> $match[0] else match is NULL
+          preg_match('/^\d+,\d+$/', $value, $match);
+          // if 123,45 convert it to 123.45,
+          return $match[0] ? str_replace(',', '.', $match[0]) : $value;
+        }
     }
 
 }
