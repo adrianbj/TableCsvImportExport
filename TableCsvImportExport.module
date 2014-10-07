@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module {
             'title' => 'Table CVS Import / Export',
             'summary' => 'Adds the ability to add rows to a Table field by importing CSV formatted content. Also adds an export button to download data from table.',
             'href' => '',
-            'version' => 10,
+            'version' => 11,
             'permanent' => false,
             'autoload' => true,
             'singular' => true,
@@ -43,8 +43,7 @@ class TableCsvImportExport extends WireData implements Module {
         $version = (int) $conf['version'];
         wire("config")->scripts->add($this->config->urls->TableCsvImportExport . "TableCsvImportExport.js?v={$version}");
 
-        $form = $this->modules->get("InputfieldForm");
-        $form->method = 'post';
+        $inputfields = new InputfieldWrapper();
 
         $fieldset = $this->modules->get("InputfieldFieldset");
         $fieldset->attr('id', 'import_csv');
@@ -107,8 +106,7 @@ class TableCsvImportExport extends WireData implements Module {
         $f->collapsed = Inputfield::collapsedYes;
         $fieldset->add($f);
 
-        $form->add($fieldset);
-
+        $inputfields->add($fieldset);
 
         $fieldset = $this->modules->get("InputfieldFieldset");
         $fieldset->attr('id', 'export_csv');
@@ -151,9 +149,9 @@ class TableCsvImportExport extends WireData implements Module {
         $f->value = "<iframe id='download' src=''></iframe>";
         $fieldset->add($f);
 
-        $form->add($fieldset);
+        $inputfields->add($fieldset);
 
-        return $event->return .= $form->render();
+        return $event->return .= $inputfields->render();
 
     }
 
