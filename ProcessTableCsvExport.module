@@ -26,7 +26,7 @@ class ProcessTableCsvExport extends Process implements Module {
     public static function getModuleInfo() {
         return array(
             'title' => __('Process Table CSV Export'),
-            'version' => 5,
+            'version' => 6,
             'summary' => __('Helper module for creating CSV to export'),
             'singular' => true,
             'autoload' => false,
@@ -86,9 +86,8 @@ class ProcessTableCsvExport extends Process implements Module {
 
     public function outputCSV($data) {
         $output = fopen("php://output", "w");
-        error_log('enclosure:'.wire('input')->get->ce);
         foreach ($data as $row) {
-            fputcsv($output, $row, wire('input')->get->cs, wire('input')->get->ce); // here you can change delimiter/enclosure
+            fputcsv($output, $row, wire('input')->get->cs == "tab" ? chr(9) : wire('input')->get->cs, wire('input')->get->ce);
         }
         fclose($output);
     }
