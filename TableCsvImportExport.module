@@ -96,7 +96,7 @@ class TableCsvImportExport extends WireData implements Module {
 
         $f = $this->modules->get("InputfieldCheckbox");
         $f->name = 'export_names_first_row';
-        $f->label = 'Put columns names in the first row';
+        $f->label = 'Put column names in the first row';
         $f->columnWidth = 50;
         $fieldset->add($f);
 
