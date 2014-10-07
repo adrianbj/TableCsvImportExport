@@ -26,7 +26,7 @@ class ProcessTableCsvExport extends Process implements Module {
     public static function getModuleInfo() {
         return array(
             'title' => __('Process Table CSV Export'),
-            'version' => 3,
+            'version' => 5,
             'summary' => __('Helper module for creating CSV to export'),
             'singular' => true,
             'autoload' => false,
@@ -60,20 +60,18 @@ class ProcessTableCsvExport extends Process implements Module {
         $p->of(true); //needed to have dates etc formatted in the CSV
         $fieldName = wire('input')->get->fn;
 
-        $csv = '';
+        $csv = array();
         $i=0;
         foreach($p->$fieldName as $row){
             if($i==0 && wire('input')->get->nfr == 'checked'){
                 foreach($row as $name => $value){
-                    $csv .= $name . wire('input')->get->cs;
+                    $csv[$i][] = $name;
                 }
-                $csv = rtrim($csv, wire('input')->get->cs) . "\r\n";
             }
-            foreach($row as $name => $value){
-                if($name!='id') $csv .= $value . wire('input')->get->cs;
-            }
-            $csv = rtrim($csv, wire('input')->get->cs) . "\r\n";
             $i++;
+            foreach($row as $name => $value){
+                if($name!='id') $csv[$i][] = $value;
+            }
         }
 
         header("Content-type: text/csv");
@@ -81,9 +79,19 @@ class ProcessTableCsvExport extends Process implements Module {
         header("Pragma: no-cache");
         header("Expires: 0");
 
-        echo trim(preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n", $csv),"\n");exit;
+        $this->outputCSV($csv);
+        exit;
     }
 
+
+    public function outputCSV($data) {
+        $output = fopen("php://output", "w");
+        error_log('enclosure:'.wire('input')->get->ce);
+        foreach ($data as $row) {
+            fputcsv($output, $row, wire('input')->get->cs, wire('input')->get->ce); // here you can change delimiter/enclosure
+        }
+        fclose($output);
+    }
 
 
     /**

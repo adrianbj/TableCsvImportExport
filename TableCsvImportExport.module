@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module {
             'title' => 'Table CVS Import / Export',
             'summary' => 'Adds the ability to add rows to a Table field by importing CSV formatted content. Also adds an export button to download data from table.',
             'href' => '',
-            'version' => 5,
+            'version' => 6,
             'permanent' => false,
             'autoload' => true,
             'singular' => true,
@@ -64,13 +64,20 @@ class TableCsvImportExport extends WireData implements Module {
         $f->name = 'import_column_separator';
         $f->label = 'Columns separated with';
         $f->value = ',';
-        $f->columnWidth = 50;
+        $f->columnWidth = 33;
+        $fieldset->add($f);
+
+        $f = $this->modules->get("InputfieldText");
+        $f->name = 'import_column_enclosure';
+        $f->label = 'Column enclosure';
+        $f->value = '"';
+        $f->columnWidth = 34;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldCheckbox");
         $f->name = 'import_names_first_row';
         $f->label = 'Ignore column names in first row';
-        $f->columnWidth = 50;
+        $f->columnWidth = 33;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldTextarea");
@@ -91,13 +98,20 @@ class TableCsvImportExport extends WireData implements Module {
         $f->name = 'export_column_separator';
         $f->label = 'Columns separated with';
         $f->value = ',';
-        $f->columnWidth = 50;
+        $f->columnWidth = 33;
+        $fieldset->add($f);
+
+        $f = $this->modules->get("InputfieldText");
+        $f->name = 'export_column_enclosure';
+        $f->label = 'Column enclosure';
+        $f->value = '"';
+        $f->columnWidth = 34;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldCheckbox");
         $f->name = 'export_names_first_row';
         $f->label = 'Put column names in the first row';
-        $f->columnWidth = 50;
+        $f->columnWidth = 33;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldButton");
@@ -146,7 +160,7 @@ class TableCsvImportExport extends WireData implements Module {
 
             if($x==1 && $this->input->post->import_names_first_row == 1) continue; //ignore first row which contains column names
 
-            $data = str_getcsv($row, $this->input->post->import_column_separator);
+            $data = str_getcsv($row, $this->input->post->import_column_separator, $this->input->post->import_column_enclosure);
 
             $tableEntry = $p->$fieldName->makeBlankItem();
 
