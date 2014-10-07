@@ -22,10 +22,11 @@ class TableCsvImportExport extends WireData implements Module {
             'title' => 'Table CVS Import / Export',
             'summary' => 'Adds the ability to add rows to a Table field by importing CSV formatted content. Also adds an export button to download data from table.',
             'href' => '',
-            'version' => 4,
+            'version' => 5,
             'permanent' => false,
             'autoload' => true,
             'singular' => true,
+            'requires' => 'FieldtypeTable',
             'installs' => 'ProcessTableCsvExport'
         );
     }
@@ -59,6 +60,19 @@ class TableCsvImportExport extends WireData implements Module {
         $f->addOption("overwrite", "Overwrite");
         $fieldset->add($f);
 
+        $f = $this->modules->get("InputfieldText");
+        $f->name = 'import_column_separator';
+        $f->label = 'Columns separated with';
+        $f->value = ',';
+        $f->columnWidth = 50;
+        $fieldset->add($f);
+
+        $f = $this->modules->get("InputfieldCheckbox");
+        $f->name = 'import_names_first_row';
+        $f->label = 'Ignore column names in first row';
+        $f->columnWidth = 50;
+        $fieldset->add($f);
+
         $f = $this->modules->get("InputfieldTextarea");
         $f->name = 'csv_data';
         $f->label = 'Paste in CSV Data';
@@ -66,11 +80,25 @@ class TableCsvImportExport extends WireData implements Module {
 
         $form->add($fieldset);
 
+
         $fieldset = $this->modules->get("InputfieldFieldset");
         $fieldset->attr('id', 'export_csv');
         $fieldset->label = "Export CSV";
         $fieldset->description = "Export the content of this table to a CSV file";
         $fieldset->collapsed = Inputfield::collapsedYes;
+
+        $f = $this->modules->get("InputfieldText");
+        $f->name = 'export_column_separator';
+        $f->label = 'Columns separated with';
+        $f->value = ',';
+        $f->columnWidth = 50;
+        $fieldset->add($f);
+
+        $f = $this->modules->get("InputfieldCheckbox");
+        $f->name = 'export_names_first_row';
+        $f->label = 'Put columns names in the first row';
+        $f->columnWidth = 50;
+        $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldButton");
         $f->name = 'export_button';
@@ -111,9 +139,14 @@ class TableCsvImportExport extends WireData implements Module {
 
         $rows = trim(preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n", $this->input->post->csv_data),"\n"); // remove any blank lines from the textarea
 
+        $x=0;
         foreach(explode("\n",$rows) as $row){
 
-            $data = str_getcsv($row);
+            $x++;
+
+            if($x==1 && $this->input->post->import_names_first_row == 1) continue; //ignore first row which contains column names
+
+            $data = str_getcsv($row, $this->input->post->import_column_separator);
 
             $tableEntry = $p->$fieldName->makeBlankItem();
 

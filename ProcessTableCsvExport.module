@@ -26,7 +26,7 @@ class ProcessTableCsvExport extends Process implements Module {
     public static function getModuleInfo() {
         return array(
             'title' => __('Process Table CSV Export'),
-            'version' => 2,
+            'version' => 3,
             'summary' => __('Helper module for creating CSV to export'),
             'singular' => true,
             'autoload' => false,
@@ -61,11 +61,19 @@ class ProcessTableCsvExport extends Process implements Module {
         $fieldName = wire('input')->get->fn;
 
         $csv = '';
+        $i=0;
         foreach($p->$fieldName as $row){
-            foreach($row as $name => $value){
-                if($name!='id') $csv .= $value . ',';
+            if($i==0 && wire('input')->get->nfr == 'checked'){
+                foreach($row as $name => $value){
+                    $csv .= $name . wire('input')->get->cs;
+                }
+                $csv = rtrim($csv, wire('input')->get->cs) . "\r\n";
             }
-            $csv = rtrim($csv,",") . "\r\n";
+            foreach($row as $name => $value){
+                if($name!='id') $csv .= $value . wire('input')->get->cs;
+            }
+            $csv = rtrim($csv, wire('input')->get->cs) . "\r\n";
+            $i++;
         }
 
         header("Content-type: text/csv");
