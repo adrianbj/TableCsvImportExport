@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module {
             'title' => 'Table CVS Import / Export',
             'summary' => 'Adds the ability to add rows to a Table field by importing CSV formatted content. Also adds an export button to download data from table.',
             'href' => '',
-            'version' => 6,
+            'version' => 7,
             'permanent' => false,
             'autoload' => true,
             'singular' => true,
@@ -32,6 +32,7 @@ class TableCsvImportExport extends WireData implements Module {
     }
 
     public function init() {
+        ini_set('auto_detect_line_endings', true);
         $this->addHookAfter('InputfieldTable::render', $this, 'addImport');
         $this->addHookAfter('InputfieldTable::processInput', $this, 'processImport');
     }
@@ -47,14 +48,14 @@ class TableCsvImportExport extends WireData implements Module {
 
         $fieldset = $this->modules->get("InputfieldFieldset");
         $fieldset->attr('id', 'import_csv');
-        $fieldset->label = "Import CSV";
-        $fieldset->description = "The structure of the CSV must match the table fields. Import will happen on page save.";
+        $fieldset->label = __("Import CSV");
+        $fieldset->description = __("The structure of the CSV must match the table fields. Import will happen on page save.");
         $fieldset->collapsed = Inputfield::collapsedYes;
 
         $f = $this->modules->get("InputfieldSelect");
         $f->name = 'append_overwrite';
-        $f->label = 'Append or Overwrite';
-        $f->description = "Determines whether to append new rows, or overwrite all existing rows.";
+        $f->label = __('Append or Overwrite');
+        $f->description = __("Determines whether to append new rows, or overwrite all existing rows.");
         $f->required = true;
         $f->addOption("append", "Append");
         $f->addOption("overwrite", "Overwrite");
@@ -62,27 +63,39 @@ class TableCsvImportExport extends WireData implements Module {
 
         $f = $this->modules->get("InputfieldText");
         $f->name = 'import_column_separator';
-        $f->label = 'Columns separated with';
+        $f->label = __('Columns separated with');
         $f->value = ',';
         $f->columnWidth = 33;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldText");
         $f->name = 'import_column_enclosure';
-        $f->label = 'Column enclosure';
+        $f->label = __('Column enclosure');
         $f->value = '"';
         $f->columnWidth = 34;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldCheckbox");
         $f->name = 'import_names_first_row';
-        $f->label = 'Ignore column names in first row';
+        $f->label = __('Ignore the first row as it contains column names');
         $f->columnWidth = 33;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldTextarea");
         $f->name = 'csv_data';
-        $f->label = 'Paste in CSV Data';
+        $f->label = __('Paste in CSV Data');
+        $f->collapsed = Inputfield::collapsedYes;
+        $fieldset->add($f);
+
+        $f = $this->modules->get("InputfieldFile");
+        $f->name = 'csv_upload';
+        $f->label = __('Upload CSV File');
+        $f->description = __("NOT CURRENTLY WORKING - USE PASTE OPTION INSTEAD");
+        $f->extensions = 'csv txt';
+        $f->maxFiles = 1;
+        $f->descriptionRows = 0;
+        $f->overwrite = true;
+        $f->collapsed = Inputfield::collapsedYes;
         $fieldset->add($f);
 
         $form->add($fieldset);
@@ -90,27 +103,28 @@ class TableCsvImportExport extends WireData implements Module {
 
         $fieldset = $this->modules->get("InputfieldFieldset");
         $fieldset->attr('id', 'export_csv');
-        $fieldset->label = "Export CSV";
-        $fieldset->description = "Export the content of this table to a CSV file";
+        $fieldset->label = __("Export CSV");
+        $fieldset->description = __("Export the content of this table to a CSV file");
         $fieldset->collapsed = Inputfield::collapsedYes;
 
         $f = $this->modules->get("InputfieldText");
         $f->name = 'export_column_separator';
-        $f->label = 'Columns separated with';
+        $f->label = __('Columns separated with');
         $f->value = ',';
         $f->columnWidth = 33;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldText");
         $f->name = 'export_column_enclosure';
-        $f->label = 'Column enclosure';
+        $f->label = __('Column enclosure');
         $f->value = '"';
         $f->columnWidth = 34;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldCheckbox");
         $f->name = 'export_names_first_row';
-        $f->label = 'Put column names in the first row';
+        $f->label = __('Put column names in the first row');
+        $f->attr('checked', 'checked');
         $f->columnWidth = 33;
         $fieldset->add($f);
 
@@ -137,15 +151,15 @@ class TableCsvImportExport extends WireData implements Module {
 
     public function processImport(HookEvent $event) {
 
-        if($this->input->post->csv_data == '') return;
+        if($this->input->post->csv_data == '' && $this->input->post->csv_upload == '') return;
 
         $fieldName = $event->object->name;
 
         $p = $this->pages->get((int) $this->input->id);
 
         $i=0;
-        foreach($p->$fieldName->labels as $subfield){
-            $subfieldNames[$i] = strtolower(str_replace(" ","_", $subfield));
+        foreach($p->$fieldName->columns as $subfield){
+            $subfieldNames[$i] = $subfield['name']; //populate array of column/field names indexed in order so they can be used later to populate table
             $i++;
         }
 
