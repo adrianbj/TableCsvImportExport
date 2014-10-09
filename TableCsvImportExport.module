@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module {
             'title' => 'Table CVS Import / Export',
             'summary' => 'Adds the ability to add rows to a Table field by importing CSV formatted content. Also adds an export button to download data from table.',
             'href' => '',
-            'version' => 12,
+            'version' => 13,
             'permanent' => false,
             'autoload' => true,
             'singular' => true,
@@ -99,7 +99,7 @@ class TableCsvImportExport extends WireData implements Module {
         $f->name = 'csv_upload';
         $f->label = __('Upload CSV File');
         $f->description = __("NOT CURRENTLY WORKING - USE PASTE OPTION INSTEAD");
-        $f->extensions = 'csv txt';
+        $f->extensions = 'csv tsv txt';
         $f->maxFiles = 1;
         $f->descriptionRows = 0;
         $f->overwrite = true;
@@ -119,21 +119,28 @@ class TableCsvImportExport extends WireData implements Module {
         $f->label = __('Columns separated with');
         $f->notes = __('For tab separated, enter: tab');
         $f->value = ',';
-        $f->columnWidth = 33;
+        $f->columnWidth = 25;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldText");
         $f->name = 'export_column_enclosure';
         $f->label = __('Column enclosure');
         $f->value = '"';
-        $f->columnWidth = 34;
+        $f->columnWidth = 25;
+        $fieldset->add($f);
+
+        $f = $this->modules->get("InputfieldText");
+        $f->name = 'export_extension';
+        $f->label = __('File extension');
+        $f->value = 'csv';
+        $f->columnWidth = 25;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldCheckbox");
         $f->name = 'export_names_first_row';
         $f->label = __('Put column names in the first row');
         $f->attr('checked', 'checked');
-        $f->columnWidth = 33;
+        $f->columnWidth = 25;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldButton");

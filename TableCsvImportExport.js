@@ -11,6 +11,7 @@ $(document).ready(function() {
             "&fn="+$(this).attr('data-fieldname')+
             "&cs="+$("#Inputfield_export_column_separator").val()+
             "&ce="+$("#Inputfield_export_column_enclosure").val()+
+            "&ext="+$("#Inputfield_export_extension").val()+
             "&nfr="+$("#Inputfield_export_names_first_row").attr('checked')
         );
         return false;
