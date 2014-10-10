@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module {
             'title' => 'Table CVS Import / Export',
             'summary' => 'Adds the ability to add rows to a Table field by importing CSV formatted content. Also adds an export button to download data from table.',
             'href' => '',
-            'version' => 16,
+            'version' => 17,
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -36,6 +36,7 @@ class TableCsvImportExport extends WireData implements Module {
         $this->addHookAfter('InputfieldTable::render', $this, 'buildForms'); // when edit enabled
         $this->addHookAfter('InputfieldTable::renderValue', $this, 'buildExportForm'); // when field locked
         $this->addHookAfter('InputfieldTable::processInput', $this, 'processImport');
+        $this->addHook('Field::importCsv', $this, 'importCsv');
     }
 
 
@@ -178,19 +179,9 @@ class TableCsvImportExport extends WireData implements Module {
 
     public function processImport(HookEvent $event) {
 
+        $this->session->fieldName = $event->object->name;
+
         if($this->input->post->csv_data == '' && $_FILES["csv_file"]["name"] == '') return;
-
-        $fieldName = $event->object->name;
-
-        $p = $this->pages->get((int) $this->input->id);
-
-        $i=0;
-        foreach($p->$fieldName->columns as $subfield){
-            $subfieldNames[$i] = $subfield['name']; //populate array of column/field names indexed in order so they can be used later to populate table
-            $i++;
-        }
-
-        if($this->input->post->append_overwrite == 'overwrite') $p->$fieldName->removeAll();
 
         //CSV file upload
         if($_FILES["csv_file"]["name"] !== ''){
@@ -200,7 +191,7 @@ class TableCsvImportExport extends WireData implements Module {
 
             if(($csv_file_extension == 'csv' || $csv_file_extension == 'txt' || $csv_file_extension == 'tsv') &&
                 ($csv_type == 'text/plain' || $csv_type == 'text/tab-separated-values' || $csv_type == 'text/csv')){
-                $csvData = file_get_contents($_FILES["csv_file"]["tmp_name"]);
+                $this->session->csvData = file_get_contents($_FILES["csv_file"]["tmp_name"]);
             }
             else{
                 $this->error($this->_("That is not an allowed file extension for a CSV import. Try again with a .csv, .tsv, or .txt file"));
@@ -210,25 +201,55 @@ class TableCsvImportExport extends WireData implements Module {
         }
 
         // CSV pasted in
-        if($this->input->post->csv_data !== '') $csvData = $this->input->post->csv_data;
+        if($this->input->post->csv_data != '') $this->session->csvData = $this->input->post->csv_data;
 
+        // Import
+        $this->importCsv();
+
+    }
+
+
+    public function importCsv($event = NULL){
+
+        $csvData = !is_null($event) ? $event->arguments(0) : $this->session->csvData;
+        unset($this->session->csvData);
+        $delimiter = !is_null($event) ? $event->arguments(1) : $this->input->post->import_column_separator;
+        $enclosure = !is_null($event) ? $event->arguments(2) : $this->input->post->import_column_enclosure;
+        $convertDecimals = !is_null($event) ? $event->arguments(3) : $this->input->post->convert_decimals;
+        if($convertDecimals == 1) $convertDecimals = true;
+        $namesFirstRow = !is_null($event) ? $event->arguments(4) : $this->input->post->import_names_first_row;
+        if($namesFirstRow == 'checked') $namesFirstRow = true;
+        $overwrite = !is_null($event) ? $event->arguments(5) : $this->input->post->append_overwrite;
+
+        $p = !is_null($event) ? $event->object->page : $this->pages->get((int) $this->input->get->id);
+        $p->of(false);
+        $fieldName = !is_null($event) ? $event->object->name : $this->session->fieldName;
+
+        if($overwrite == 'overwrite') $p->$fieldName->removeAll();
 
         $rows = trim(preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n", $csvData),"\n"); // remove any blank lines from the textarea
+
+        $i=0;
+        foreach($p->$fieldName->columns as $subfield){
+            $subfieldNames[$i] = $subfield['name']; //populate array of column/field names indexed in order so they can be used later to populate table
+            $i++;
+        }
 
         $x=0;
         foreach(explode("\n",$rows) as $row){
 
             $x++;
 
-            if($x==1 && $this->input->post->import_names_first_row == 1) continue; //ignore first row which contains column names
+            if($x==1 && $namesFirstRow == true) continue; //ignore first row which contains column names
 
-            $data = str_getcsv($row, $this->input->post->import_column_separator == "tab" ? chr(9) : $this->input->post->import_column_separator, $this->input->post->import_column_enclosure);
+            $data = str_getcsv($row, $delimiter == "tab" ? chr(9) : $delimiter, $enclosure);
 
             $tableEntry = $p->$fieldName->makeBlankItem();
 
             foreach($data as $subfieldKey => $fieldValue){
-                if($subfieldNames[$subfieldKey] != 'data') $tableEntry->$subfieldNames[$subfieldKey] = $this->input->post->convert_decimals == 1 ? $this->convertDecimals($fieldValue) : $fieldValue;
+                $tableEntry->$subfieldNames[$subfieldKey] = $convertDecimals == true ? $this->convertDecimals($fieldValue) : $fieldValue;
             }
+
             $p->$fieldName->add($tableEntry);
             $p->save($fieldName);
 
@@ -236,13 +257,17 @@ class TableCsvImportExport extends WireData implements Module {
 
     }
 
+
     public function convertDecimals($value){
         // is the first character a number ?
         if(ctype_digit(substr($value, 0, 1))) {
-          // 123,45 -> $match[0] else match is NULL
-          preg_match('/^\d+,\d+$/', $value, $match);
-          // if 123,45 convert it to 123.45,
-          return $match[0] ? str_replace(',', '.', $match[0]) : $value;
+            // 123,45 -> $match[0] else match is NULL
+            preg_match('/^\d+,\d+$/', $value, $match);
+            // if 123,45 convert it to 123.45,
+            return count($match) && $match[0] ? str_replace(',', '.', $match[0]) : $value;
+        }
+        else{
+            return $value;
         }
     }
 
