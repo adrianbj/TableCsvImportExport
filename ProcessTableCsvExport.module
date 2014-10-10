@@ -26,10 +26,11 @@ class ProcessTableCsvExport extends Process implements Module {
     public static function getModuleInfo() {
         return array(
             'title' => __('Process Table CSV Export'),
-            'version' => 8,
+            'version' => 9,
             'summary' => __('Helper module for creating CSV to export'),
             'singular' => true,
             'autoload' => false,
+            'permission' => 'table-csv-export',
             'requires' => 'TableCsvImportExport'
             );
     }
@@ -129,13 +130,12 @@ class ProcessTableCsvExport extends Process implements Module {
 
         if(!$page->id) {
             $page = new Page();
-            $page->parent = $parent;
-            $page->template = $this->templates->get('admin');
+            $page->template = 'admin';
+            $page->parent = $this->pages->get($this->config->adminRootPageID)->child('name=setup');
+            $page->title = 'Table CSV Export';
             $page->name = self::adminPageName;
-            $page->title = "Table CSV Export";
             $page->process = $this;
             $page->status = Page::statusHidden;
-            $page->sort = $parent->numChildren;
             $page->save();
         }
 
