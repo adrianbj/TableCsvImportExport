@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module {
             'title' => 'Table CVS Import / Export',
             'summary' => 'Adds the ability to add rows to a Table field by importing CSV formatted content. Also adds an export button to download data from table.',
             'href' => '',
-            'version' => 13,
+            'version' => 14,
             'permanent' => false,
             'autoload' => true,
             'singular' => true,
@@ -33,15 +33,19 @@ class TableCsvImportExport extends WireData implements Module {
 
     public function init() {
         ini_set('auto_detect_line_endings', true);
-        $this->addHookAfter('InputfieldTable::render', $this, 'buildForm');
+        $this->addHookAfter('InputfieldTable::render', $this, 'buildForms'); // when edit enabled
+        $this->addHookAfter('InputfieldTable::renderValue', $this, 'buildExportForm'); // when field locked
         $this->addHookAfter('InputfieldTable::processInput', $this, 'processImport');
     }
 
-    public function buildForm(HookEvent $event) {
 
-        $conf = $this->getModuleInfo();
-        $version = (int) $conf['version'];
-        wire("config")->scripts->add($this->config->urls->TableCsvImportExport . "TableCsvImportExport.js?v={$version}");
+    public function buildForms(HookEvent $event) {
+        $this->buildImportForm($event);
+        $this->buildExportForm($event);
+    }
+
+
+    public function buildImportForm(HookEvent $event) {
 
         $inputfields = new InputfieldWrapper();
 
@@ -108,6 +112,18 @@ class TableCsvImportExport extends WireData implements Module {
 
         $inputfields->add($fieldset);
 
+        return $event->return .= $inputfields->render();
+    }
+
+
+    public function buildExportForm(HookEvent $event) {
+
+        $conf = $this->getModuleInfo();
+        $version = (int) $conf['version'];
+        wire("config")->scripts->add($this->config->urls->TableCsvImportExport . "TableCsvImportExport.js?v={$version}");
+
+        $inputfields = new InputfieldWrapper();
+
         $fieldset = $this->modules->get("InputfieldFieldset");
         $fieldset->attr('id', 'export_csv');
         $fieldset->label = __("Export CSV");
@@ -159,7 +175,6 @@ class TableCsvImportExport extends WireData implements Module {
         $inputfields->add($fieldset);
 
         return $event->return .= $inputfields->render();
-
     }
 
 
