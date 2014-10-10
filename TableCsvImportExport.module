@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module {
             'title' => 'Table CVS Import / Export',
             'summary' => 'Adds the ability to add rows to a Table field by importing CSV formatted content. Also adds an export button to download data from table.',
             'href' => '',
-            'version' => 15,
+            'version' => 16,
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -96,17 +96,15 @@ class TableCsvImportExport extends WireData implements Module {
         $f = $this->modules->get("InputfieldTextarea");
         $f->name = 'csv_data';
         $f->label = __('Paste in CSV Data');
+        $f->notes = __('Be sure you match the settings above to the format of your data');
         $f->collapsed = Inputfield::collapsedYes;
         $fieldset->add($f);
 
-        $f = $this->modules->get("InputfieldFile");
-        $f->name = 'csv_upload';
+        $f = $this->modules->get("InputfieldMarkup");
         $f->label = __('Upload CSV File');
-        $f->description = __("NOT CURRENTLY WORKING - USE PASTE OPTION INSTEAD");
-        $f->extensions = 'csv tsv txt';
-        $f->maxFiles = 1;
-        $f->descriptionRows = 0;
-        $f->overwrite = true;
+        $f->attr('name', 'csv_upload');
+        $f->value = "<input name='csv_file' type='file' />";
+        $f->notes = __("File must have .csv, .tsv, or .txt extension\nBe sure you match the settings above to the format of your data");
         $f->collapsed = Inputfield::collapsedYes;
         $fieldset->add($f);
 
@@ -180,7 +178,7 @@ class TableCsvImportExport extends WireData implements Module {
 
     public function processImport(HookEvent $event) {
 
-        if($this->input->post->csv_data == '' && $this->input->post->csv_upload == '') return;
+        if($this->input->post->csv_data == '' && $_FILES["csv_file"]["name"] == '') return;
 
         $fieldName = $event->object->name;
 
@@ -194,16 +192,25 @@ class TableCsvImportExport extends WireData implements Module {
 
         if($this->input->post->append_overwrite == 'overwrite') $p->$fieldName->removeAll();
 
+        //CSV file upload
+        if($_FILES["csv_file"]["name"] !== ''){
 
-        $csvFile = $this->input->post->csv_upload;
-        $csvData = $this->input->post->csv_data;
+            $csv_file_extension = pathinfo($_FILES["csv_file"]["name"], PATHINFO_EXTENSION);
+            $csv_type = $_FILES["csv_file"]["type"];
 
-        if(count($csvFile)) {
-            $csvFile = $csvFile->first();
-            $csvFile->rename("data.csv");
-            $csvFilename = $csvFile->filename;
-            $csvData = file_get_contents($csvFilename);
+            if(($csv_file_extension == 'csv' || $csv_file_extension == 'txt' || $csv_file_extension == 'tsv') &&
+                ($csv_type == 'text/plain' || $csv_type == 'text/tab-separated-values' || $csv_type == 'text/csv')){
+                $csvData = file_get_contents($_FILES["csv_file"]["tmp_name"]);
+            }
+            else{
+                $this->error($this->_("That is not an allowed file extension for a CSV import. Try again with a .csv, .tsv, or .txt file"));
+            }
+
+            unlink($_FILES["csv_file"]["tmp_name"]);
         }
+
+        // CSV pasted in
+        if($this->input->post->csv_data !== '') $csvData = $this->input->post->csv_data;
 
 
         $rows = trim(preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n", $csvData),"\n"); // remove any blank lines from the textarea
