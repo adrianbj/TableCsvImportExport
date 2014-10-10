@@ -26,7 +26,7 @@ class ProcessTableCsvExport extends Process implements Module {
     public static function getModuleInfo() {
         return array(
             'title' => __('Process Table CSV Export'),
-            'version' => 7,
+            'version' => 8,
             'summary' => __('Helper module for creating CSV to export'),
             'singular' => true,
             'autoload' => false,
@@ -48,6 +48,7 @@ class ProcessTableCsvExport extends Process implements Module {
      */
     public function init() {
         parent::init();
+        $this->addHook('Field::exportCsv', $this, 'exportCsv');
     }
 
     /**
@@ -55,15 +56,35 @@ class ProcessTableCsvExport extends Process implements Module {
      *
      */
     public function ___execute() {
+        $this->exportCsv();
+    }
 
-        $p = wire('pages')->get((int) wire('input')->get->pid);
+
+    public function outputCSV($data, $delimiter, $enclosure) {
+        $output = fopen("php://output", "w");
+        foreach ($data as $row) {
+            fputcsv($output, $row, $delimiter == "tab" ? chr(9) : $delimiter, $enclosure);
+        }
+        fclose($output);
+    }
+
+
+    public function exportCsv($event = NULL) {
+
+        $delimiter = !is_null($event) ? $event->arguments(0) : wire('input')->get->cs;
+        $enclosure = !is_null($event) ? $event->arguments(1) : wire('input')->get->ce;
+        $extension = !is_null($event) ? $event->arguments(2) : wire('input')->get->ext;
+        $namesFirstRow = !is_null($event) ? $event->arguments(3) : wire('input')->get->nfr;
+        $namesFirstRow = $namesFirstRow == 'checked' ? true : false;
+
+        $p = !is_null($event) ? $event->object->page : wire('pages')->get((int) wire('input')->get->pid);
         $p->of(true); //needed to have dates etc formatted in the CSV
-        $fieldName = wire('input')->get->fn;
+        $fieldName = !is_null($event) ? $event->object->name : wire('input')->get->fn;
 
         $csv = array();
         $i=0;
         foreach($p->$fieldName as $row){
-            if($i==0 && wire('input')->get->nfr == 'checked'){
+            if($i==0 && $namesFirstRow == true){
                 foreach($row as $name => $value){
                     $csv[$i][] = $name;
                 }
@@ -75,22 +96,15 @@ class ProcessTableCsvExport extends Process implements Module {
         }
 
         header("Content-type: text/csv");
-        header("Content-Disposition: attachment; filename=".$fieldName.".".wire('input')->get->ext);
+        header("Content-Disposition: attachment; filename=".$fieldName.".".$extension);
         header("Pragma: no-cache");
         header("Expires: 0");
 
-        $this->outputCSV($csv);
+        $this->outputCSV($csv, $delimiter, $enclosure);
         exit;
+
     }
 
-
-    public function outputCSV($data) {
-        $output = fopen("php://output", "w");
-        foreach ($data as $row) {
-            fputcsv($output, $row, wire('input')->get->cs == "tab" ? chr(9) : wire('input')->get->cs, wire('input')->get->ce);
-        }
-        fclose($output);
-    }
 
 
     /**
@@ -133,7 +147,6 @@ class ProcessTableCsvExport extends Process implements Module {
      *
      */
     public function ___uninstall() {
-        //$page = $this->getInstalledPage();
         $moduleID = $this->modules->getModuleID($this);
         $page = $this->pages->get("template=admin, process=$moduleID, name=" . self::adminPageName);
         if($page->id) {
