@@ -25,6 +25,7 @@ else{
 
 Front-end import can be achieved with the importCsv() method:
 ```
+$modules->get('TableCsvImportExport');
 // data, delimiter, enclosure, convert decimals, ignore first row, append or overwrite
 $page->fields->tablefield->importCsv($csvData, ';', '"', true, false, 'append');
 ```
