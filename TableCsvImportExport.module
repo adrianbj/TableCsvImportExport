@@ -4,7 +4,7 @@
  * ProcessWire Table CSV Import / Export
  * by Adrian Jones
  *
- * Adds the ability to add rows to a Table field by importing CSV formatted content. Also adds an export button to download data from table.
+ * Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.
  *
  * ProcessWire 2.x
  * Copyright (C) 2011 by Ryan Cramer
@@ -20,7 +20,7 @@ class TableCsvImportExport extends WireData implements Module {
     public static function getModuleInfo() {
         return array(
             'title' => 'Table CVS Import / Export',
-            'summary' => 'Adds the ability to add rows to a Table field by importing CSV formatted content. Also adds an export button to download data from table.',
+            'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => '',
             'version' => 17,
             'permanent' => false,

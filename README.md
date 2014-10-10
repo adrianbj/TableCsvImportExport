@@ -1,8 +1,7 @@
 Table CSV Import / Export
 ==========================
 
-Processwire module to add rows to a Table field by importing CSV formatted content.
-Also provides an export button to download the contents of the table in CSV.
+Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.
 
 Front-end export of a table field to CSV can be achieved with the exportCsv() method:
 ```
