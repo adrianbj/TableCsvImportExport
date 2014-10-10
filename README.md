@@ -4,7 +4,7 @@ Table CSV Import / Export
 Processwire module to add rows to a Table field by importing CSV formatted content.
 Also provides an export button to download the contents of the table in CSV.
 
-Front-end export of a table field to CSV can be achieved like this:
+In addition to the admin import and export tools, front-end export of a table field to CSV can be achieved with the new exportCsv() method:
 ```
 <?php
 // export as CSV if csv_export=1 is in url
