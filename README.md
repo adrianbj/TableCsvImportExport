@@ -1,7 +1,27 @@
 Table CSV Import / Export
 ==========================
 
-Processwire module to add rows to a Table field by importing CSV formatted content. Also provides an export button to download the contents of the table in CSV.
+Processwire module to add rows to a Table field by importing CSV formatted content.
+Also provides an export button to download the contents of the table in CSV.
+
+Front-end export of a table field to CSV can be achieved like this:
+```
+<?php
+// export as CSV if csv_export=1 is in url
+if($input->csv_export==1){
+    $modules->get('ProcessTableCsvExport');
+    $page->fields->tablefield->exportCsv('tab', '"', 'tsv', true); // delimiter, enclosure, file extension, names in first row
+}
+// display content of template with link to same page with appended csv_export=1
+else{
+    include("./head.inc");
+
+    echo $page->tablefield->render();
+    echo "<a href='./?csv_export=1'>Export Table as CSV</a>";
+
+    include("./foot.inc");
+}
+```
 
 
 ## License
