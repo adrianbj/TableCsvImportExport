@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module {
             'title' => 'Table CVS Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => '',
-            'version' => 17,
+            'version' => 19,
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -34,15 +34,15 @@ class TableCsvImportExport extends WireData implements Module {
     public function init() {
         ini_set('auto_detect_line_endings', true);
         $this->addHookAfter('InputfieldTable::render', $this, 'buildForms'); // when edit enabled
-        $this->addHookAfter('InputfieldTable::renderValue', $this, 'buildExportForm'); // when field locked
-        $this->addHookAfter('InputfieldTable::processInput', $this, 'processImport');
-        $this->addHook('Field::importCsv', $this, 'importCsv');
+        if($this->user->hasPermission("table-csv-export")) $this->addHookAfter('InputfieldTable::renderValue', $this, 'buildExportForm'); // when field locked
+        if($this->user->hasPermission("table-csv-import")) $this->addHookAfter('InputfieldTable::processInput', $this, 'processImport');
+        $this->addHook('Field::importCsv', $this, 'importCsv'); // not limited to table-csv-import permission because only relevant to front-end
     }
 
 
     public function buildForms(HookEvent $event) {
-        $this->buildImportForm($event);
-        $this->buildExportForm($event);
+        if($this->user->hasPermission("table-csv-import")) $this->buildImportForm($event);
+        if($this->user->hasPermission("table-csv-export")) $this->buildExportForm($event);
     }
 
 
@@ -270,5 +270,61 @@ class TableCsvImportExport extends WireData implements Module {
             return $value;
         }
     }
+
+
+    /**
+     * Called only when your module is installed
+     *
+     * Create a new permission.
+     *
+     */
+    public function ___install() {
+        $permission = $this->permissions->get('table-csv-import');
+        if (!$permission->id) {
+            $p = new Permission();
+            $p->name = 'table-csv-import';
+            $p->title = $this->_('Access to Table CSV Import');
+            $p->save();
+            // tell the user we created this module's permission
+            $this->message($this->_("Created New Permission: table-csv-import"));
+            $this->message($this->_("Assigned table-csv-import permission to superuser"));
+        }
+        $permission = $this->permissions->get('table-csv-export');
+        if (!$permission->id) {
+            $p = new Permission();
+            $p->name = 'table-csv-export';
+            $p->title = $this->_('Access to Table CSV Export');
+            $p->save();
+            // tell the user we created this module's permission
+            $this->message($this->_("Created New Permission: table-csv-export"));
+            $this->message($this->_("Assigned table-csv-export permission to superuser"));
+        }
+
+        $su = $this->roles->get("superuser");
+        $su->addPermission("table-csv-import");
+        $su->addPermission("table-csv-export");
+        $su->save();
+    }
+
+    /**
+     * Called only when your module is uninstalled
+     *
+     * Remove the special permission
+     *
+     */
+    public function ___uninstall() {
+        $permission = $this->permissions->get('table-csv-import');
+        if ($permission->id) {
+            $permission->delete();
+            $this->message($this->_("Deleted Permission: table-csv-import"));
+        }
+        $permission = $this->permissions->get('table-csv-export');
+        if ($permission->id) {
+            $permission->delete();
+            $this->message($this->_("Deleted Permission: table-csv-export"));
+        }
+    }
+
+
 
 }

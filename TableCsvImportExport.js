@@ -1,7 +1,5 @@
 $(document).ready(function() {
 
-    //$("#PageIDIndicator").remove(); // hack to disable html5 upload which wasn't working. Problem is that it disabled html5 upload for other fields on the page
-
     $('.Inputfield_iframe').hide();
 
     $(document).on('click', '.export_csv', function(){

@@ -3,6 +3,8 @@ Table CSV Import / Export
 
 Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.
 
+Access to the admin import/export for non-superusers is controlled by two automatically created permissions: table-csv-import and table-csv-export
+
 Front-end export of a table field to CSV can be achieved with the exportCsv() method:
 ```
 <?php
