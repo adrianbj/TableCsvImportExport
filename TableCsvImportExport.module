@@ -47,7 +47,7 @@ class TableCsvImportExport extends WireData implements Module {
         $inputfields = $event->return;
 
         $f = $this->modules->get('InputfieldCheckbox');
-        $f->label = __('Allow overwrite option');
+        $f->label = __('Allow CSV Import Overwrite Option');
         $f->description = __('If checked, users will have the option to overwrite, not just append, when adding data to table via the Table CSV Import/Export module.');
         $f->attr('name', 'allow_overwrite');
         $value = $this->fields->get($event->object->name)->allow_overwrite;
