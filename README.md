@@ -9,24 +9,25 @@ Front-end export of a table field to CSV can be achieved with the exportCsv() me
 ```
 <?php
 // export as CSV if csv_export=1 is in url
-if($input->csv_export==1){
-    $modules->get('ProcessTableCsvExport');
-    $page->fields->tablefield->exportCsv('tab', '"', 'tsv', true); // delimiter, enclosure, file extension, names in first row
+if($input->get->csv_export==1){
+   $modules->get('ProcessTableCsvExport'); // load module
+   // delimiter, enclosure, file extension, names in first row
+   $page->fields->tablefield->exportCsv('tab', '"', 'tsv', true);
 }
 // display content of template with link to same page with appended csv_export=1
 else{
-    include("./head.inc");
+   include("./head.inc");
 
-    echo $page->tablefield->render();
-    echo "<a href='./?csv_export=1'>Export Table as CSV</a>";
+   echo $page->tablefield->render(); //render table - not necessary for export
+   echo "<a href='./?csv_export=1'>Export Table as CSV</a>"; //link to initiate export
 
-    include("./foot.inc");
+   include("./foot.inc");
 }
 ```
 
 Front-end import can be achieved with the importCsv() method:
 ```
-$modules->get('TableCsvImportExport');
+$modules->get('TableCsvImportExport'); // load module
 // data, delimiter, enclosure, convert decimals, ignore first row, append or overwrite
 $page->fields->tablefield->importCsv($csvData, ';', '"', true, false, 'append');
 ```
