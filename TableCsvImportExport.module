@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module {
             'title' => 'Table CVS Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => '',
-            'version' => 20,
+            'version' => 21,
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -52,6 +52,7 @@ class TableCsvImportExport extends WireData implements Module {
         $f->attr('name', 'allow_overwrite');
         $value = $this->fields->get($event->object->name)->allow_overwrite;
         $f->attr('checked', $this->fields->get($event->object->name)->allow_overwrite ? 'checked' : '' );
+        $f->collapsed = Inputfield::collapsedYes;
         $inputfields->append($f);
 
     }
