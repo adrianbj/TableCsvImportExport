@@ -4,6 +4,9 @@ Table CSV Import / Export
 Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.
 
 Access to the admin import/export for non-superusers is controlled by two automatically created permissions: table-csv-import and table-csv-export
+Another permission (table-csv-import-overwrite) allows you to control access to the overwrite option when importing.
+
+The overwrite option is also controlled at the field level. Go to the table field's Input tab and check the new "Allow overwrite option" if you want this enabled at all for the specific field.
 
 Front-end export of a table field to CSV can be achieved with the exportCsv() method:
 ```
