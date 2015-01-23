@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module {
             'title' => 'Table CVS Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => 22,
+            'version' => 23,
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -65,6 +65,9 @@ class TableCsvImportExport extends WireData implements Module {
 
 
     public function buildImportForm(HookEvent $event) {
+
+        // we're interested in page editor only
+        if(wire('page')->process != 'ProcessPageEdit') return;
 
         $inputfields = new InputfieldWrapper();
 
@@ -136,6 +139,9 @@ class TableCsvImportExport extends WireData implements Module {
 
 
     public function buildExportForm(HookEvent $event) {
+
+        // we're interested in page editor only
+        if(wire('page')->process != 'ProcessPageEdit') return;
 
         $conf = $this->getModuleInfo();
         $version = (int) $conf['version'];
