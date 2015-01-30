@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module {
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => 24,
+            'version' => 25,
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -218,10 +218,8 @@ class TableCsvImportExport extends WireData implements Module {
         if($_FILES[$csv_filename]["name"] !== ''){
 
             $csv_file_extension = pathinfo($_FILES[$csv_filename]["name"], PATHINFO_EXTENSION);
-            $csv_type = $_FILES[$csv_filename]["type"];
 
-            if(($csv_file_extension == 'csv' || $csv_file_extension == 'txt' || $csv_file_extension == 'tsv') &&
-                ($csv_type == 'text/plain' || $csv_type == 'text/tab-separated-values' || $csv_type == 'text/csv')){
+            if($csv_file_extension == 'csv' || $csv_file_extension == 'txt' || $csv_file_extension == 'tsv'){
                 $this->session->{$fieldName . '_csv_data'} = file_get_contents($_FILES[$csv_filename]["tmp_name"]);
             }
             else{
