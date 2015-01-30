@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module {
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => 23,
+            'version' => 24,
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -30,6 +30,7 @@ class TableCsvImportExport extends WireData implements Module {
             'installs' => 'ProcessTableCsvExport'
         );
     }
+
 
     public function init() {
         ini_set('auto_detect_line_endings', true);
@@ -69,17 +70,19 @@ class TableCsvImportExport extends WireData implements Module {
         // we're interested in page editor only
         if(wire('page')->process != 'ProcessPageEdit') return;
 
+        $fieldName = $event->object->name;
+
         $inputfields = new InputfieldWrapper();
 
         $fieldset = $this->modules->get("InputfieldFieldset");
-        $fieldset->attr('id', 'import_csv');
+        $fieldset->attr('id', $fieldName . '_import_csv');
         $fieldset->label = __("Import CSV");
         $fieldset->description = __("The structure of the CSV must match the table fields. Import will happen on page save." . ($this->fields->get($event->object->name)->allow_overwrite != 1 || !$this->user->hasPermission("table-csv-import-overwrite") ? "\nImported data will be appended to existing rows." : ""));
         $fieldset->collapsed = Inputfield::collapsedYes;
 
         if($this->fields->get($event->object->name)->allow_overwrite == 1 && $this->user->hasPermission("table-csv-import-overwrite")){
             $f = $this->modules->get("InputfieldSelect");
-            $f->name = 'append_overwrite';
+            $f->name = $fieldName . '_append_overwrite';
             $f->label = __('Append or Overwrite');
             $f->description = __("Determines whether to append new rows, or overwrite all existing rows.");
             $f->required = true;
@@ -89,7 +92,7 @@ class TableCsvImportExport extends WireData implements Module {
         }
 
         $f = $this->modules->get("InputfieldText");
-        $f->name = 'import_column_separator';
+        $f->name = $fieldName . '_import_column_separator';
         $f->label = __('Columns separated with');
         $f->notes = __('For tab separated, enter: tab');
         $f->value = ',';
@@ -97,28 +100,28 @@ class TableCsvImportExport extends WireData implements Module {
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldText");
-        $f->name = 'import_column_enclosure';
+        $f->name = $fieldName . '_import_column_enclosure';
         $f->label = __('Column enclosure');
         $f->value = '"';
         $f->columnWidth = 25;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldCheckbox");
-        $f->name = 'convert_decimals';
+        $f->name = $fieldName . '_convert_decimals';
         $f->label = __('Convert comma decimals to dots.');
         $f->notes = __('eg. 123,45 is converted to 123.45');
         $f->columnWidth = 25;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldCheckbox");
-        $f->name = 'import_names_first_row';
+        $f->name = $fieldName . '_import_names_first_row';
         $f->label = __('Ignore the first row');
         $f->notes = __('Use this if the first row is column names');
         $f->columnWidth = 25;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldTextarea");
-        $f->name = 'csv_data';
+        $f->name = $fieldName . '_csv_data';
         $f->label = __('Paste in CSV Data');
         $f->notes = __('Be sure you match the settings above to the format of your data');
         $f->collapsed = Inputfield::collapsedYes;
@@ -126,8 +129,8 @@ class TableCsvImportExport extends WireData implements Module {
 
         $f = $this->modules->get("InputfieldMarkup");
         $f->label = __('Upload CSV File');
-        $f->attr('name', 'csv_upload');
-        $f->value = "<input name='csv_file' type='file' />";
+        $f->name = $fieldName . '_csv_upload';
+        $f->value = "<input name='".$event->object->name."_csv_file' type='file' />";
         $f->notes = __("File must have .csv, .tsv, or .txt extension\nBe sure you match the settings above to the format of your data");
         $f->collapsed = Inputfield::collapsedYes;
         $fieldset->add($f);
@@ -205,29 +208,31 @@ class TableCsvImportExport extends WireData implements Module {
 
     public function processImport(HookEvent $event) {
 
-        $this->session->fieldName = $event->object->name;
+        $fieldName = $event->object->name;
+        $this->session->fieldName = $fieldName;
+        $csv_filename = $this->session->fieldName . '_csv_file';
 
-        if($this->input->post->csv_data == '' && $_FILES["csv_file"]["name"] == '') return;
+        if($this->input->post->{$fieldName . '_csv_data'} == '' && $_FILES[$csv_filename]["name"] == '') return;
 
         //CSV file upload
-        if($_FILES["csv_file"]["name"] !== ''){
+        if($_FILES[$csv_filename]["name"] !== ''){
 
-            $csv_file_extension = pathinfo($_FILES["csv_file"]["name"], PATHINFO_EXTENSION);
-            $csv_type = $_FILES["csv_file"]["type"];
+            $csv_file_extension = pathinfo($_FILES[$csv_filename]["name"], PATHINFO_EXTENSION);
+            $csv_type = $_FILES[$csv_filename]["type"];
 
             if(($csv_file_extension == 'csv' || $csv_file_extension == 'txt' || $csv_file_extension == 'tsv') &&
                 ($csv_type == 'text/plain' || $csv_type == 'text/tab-separated-values' || $csv_type == 'text/csv')){
-                $this->session->csvData = file_get_contents($_FILES["csv_file"]["tmp_name"]);
+                $this->session->{$fieldName . '_csv_data'} = file_get_contents($_FILES[$csv_filename]["tmp_name"]);
             }
             else{
                 $this->error($this->_("That is not an allowed file extension for a CSV import. Try again with a .csv, .tsv, or .txt file"));
             }
 
-            unlink($_FILES["csv_file"]["tmp_name"]);
+            unlink($_FILES[$csv_filename]["tmp_name"]);
         }
 
         // CSV pasted in
-        if($this->input->post->csv_data != '') $this->session->csvData = $this->input->post->csv_data;
+        if($this->input->post->{$fieldName . '_csv_data'} != '') $this->session->{$fieldName . '_csv_data'} = $this->input->post->{$fieldName . '_csv_data'};
 
         // Import
         $this->importCsv();
@@ -237,19 +242,20 @@ class TableCsvImportExport extends WireData implements Module {
 
     public function importCsv($event = NULL){
 
-        $csvData = !is_null($event) ? $event->arguments(0) : $this->session->csvData;
-        unset($this->session->csvData);
-        $delimiter = !is_null($event) ? $event->arguments(1) : $this->input->post->import_column_separator;
-        $enclosure = !is_null($event) ? $event->arguments(2) : $this->input->post->import_column_enclosure;
-        $convertDecimals = !is_null($event) ? $event->arguments(3) : $this->input->post->convert_decimals;
+        $fieldName = !is_null($event) ? $event->object->name : $this->session->fieldName;
+
+        $csvData = !is_null($event) ? $event->arguments(0) : $this->session->{$fieldName . '_csv_data'};
+        unset($this->session->{$fieldName . '_csv_data'});
+        $delimiter = !is_null($event) ? $event->arguments(1) : $this->input->post->{$fieldName . '_import_column_separator'};
+        $enclosure = !is_null($event) ? $event->arguments(2) : $this->input->post->{$fieldName . '_import_column_enclosure'};
+        $convertDecimals = !is_null($event) ? $event->arguments(3) : $this->input->post->{$fieldName . '_convert_decimals'};
         if($convertDecimals == 1) $convertDecimals = true;
-        $namesFirstRow = !is_null($event) ? $event->arguments(4) : $this->input->post->import_names_first_row;
+        $namesFirstRow = !is_null($event) ? $event->arguments(4) : $this->input->post->{$fieldName . '_import_names_first_row'};
         if($namesFirstRow == 'checked') $namesFirstRow = true;
-        $overwrite = !is_null($event) ? $event->arguments(5) : $this->input->post->append_overwrite;
+        $overwrite = !is_null($event) ? $event->arguments(5) : $this->input->post->{$fieldName . '_append_overwrite'};
 
         $p = !is_null($event) ? $event->object->page : $this->pages->get((int) $this->input->get->id);
         $p->of(false);
-        $fieldName = !is_null($event) ? $event->object->name : $this->session->fieldName;
 
         if($overwrite == 'overwrite') $p->$fieldName->removeAll();
 
