@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module {
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => 25,
+            'version' => 26,
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -72,15 +72,18 @@ class TableCsvImportExport extends WireData implements Module {
 
         $fieldName = $event->object->name;
 
+        //actual field name is never mangled with a repeater extension
+        $actualFieldName = (strpos($fieldName, '_repeater') !== FALSE) ? strstr($fieldName, '_repeater', true) : $fieldName;
+
         $inputfields = new InputfieldWrapper();
 
         $fieldset = $this->modules->get("InputfieldFieldset");
         $fieldset->attr('id', $fieldName . '_import_csv');
         $fieldset->label = __("Import CSV");
-        $fieldset->description = __("The structure of the CSV must match the table fields. Import will happen on page save." . ($this->fields->get($event->object->name)->allow_overwrite != 1 || !$this->user->hasPermission("table-csv-import-overwrite") ? "\nImported data will be appended to existing rows." : ""));
+        $fieldset->description = __("The structure of the CSV must match the table fields. Import will happen on page save." . ($this->fields->get($actualFieldName)->allow_overwrite != 1 || !$this->user->hasPermission("table-csv-import-overwrite") ? "\nImported data will be appended to existing rows." : ""));
         $fieldset->collapsed = Inputfield::collapsedYes;
 
-        if($this->fields->get($event->object->name)->allow_overwrite == 1 && $this->user->hasPermission("table-csv-import-overwrite")){
+        if($this->fields->get($actualFieldName)->allow_overwrite == 1 && $this->user->hasPermission("table-csv-import-overwrite")){
             $f = $this->modules->get("InputfieldSelect");
             $f->name = $fieldName . '_append_overwrite';
             $f->label = __('Append or Overwrite');
@@ -242,6 +245,9 @@ class TableCsvImportExport extends WireData implements Module {
 
         $fieldName = !is_null($event) ? $event->object->name : $this->session->fieldName;
 
+        //actual field name is never mangled with a repeater extension
+        $actualFieldName = (strpos($fieldName, '_repeater') !== FALSE) ? strstr($fieldName, '_repeater', true) : $fieldName;
+
         $csvData = !is_null($event) ? $event->arguments(0) : $this->session->{$fieldName . '_csv_data'};
         unset($this->session->{$fieldName . '_csv_data'});
         $delimiter = !is_null($event) ? $event->arguments(1) : $this->input->post->{$fieldName . '_import_column_separator'};
@@ -252,15 +258,23 @@ class TableCsvImportExport extends WireData implements Module {
         if($namesFirstRow == 'checked') $namesFirstRow = true;
         $overwrite = !is_null($event) ? $event->arguments(5) : $this->input->post->{$fieldName . '_append_overwrite'};
 
-        $p = !is_null($event) ? $event->object->page : $this->pages->get((int) $this->input->get->id);
+        //get actual page, considering it might be a repeater
+        if($actualFieldName != $fieldName) $repeaterId = str_replace($actualFieldName . '_repeater', '', $fieldName);
+        if(isset($repeaterId)) {
+            $p = $this->pages->get($repeaterId);
+        }
+        else {
+            $p = !is_null($event) ? $event->object->page : $this->pages->get((int) $this->input->get->id);
+        }
+
         $p->of(false);
 
-        if($overwrite == 'overwrite') $p->$fieldName->removeAll();
+        if($overwrite == 'overwrite') $p->$actualFieldName->removeAll();
 
         $rows = trim(preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n", $csvData),"\n"); // remove any blank lines from the textarea
 
         $i=0;
-        foreach($p->$fieldName->columns as $subfield){
+        foreach($p->$actualFieldName->columns as $subfield){
             $subfieldNames[$i] = $subfield['name']; //populate array of column/field names indexed in order so they can be used later to populate table
             $i++;
         }
@@ -274,14 +288,14 @@ class TableCsvImportExport extends WireData implements Module {
 
             $data = str_getcsv($row, $delimiter == "tab" ? chr(9) : $delimiter, $enclosure);
 
-            $tableEntry = $p->$fieldName->makeBlankItem();
+            $tableEntry = $p->$actualFieldName->makeBlankItem();
 
             foreach($data as $subfieldKey => $fieldValue){
                 $tableEntry->$subfieldNames[$subfieldKey] = $convertDecimals == true ? $this->convertDecimals($fieldValue) : $fieldValue;
             }
 
-            $p->$fieldName->add($tableEntry);
-            $p->save($fieldName);
+            $p->$actualFieldName->add($tableEntry);
+            $p->save($actualFieldName);
 
         }
 
