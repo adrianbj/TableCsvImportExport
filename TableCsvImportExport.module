@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module {
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => 28,
+            'version' => 29,
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -272,8 +272,8 @@ class TableCsvImportExport extends WireData implements Module {
         if($overwrite == 'overwrite') $p->$actualFieldName->removeAll();
 
         $rows = trim(preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n", $csvData),"\n"); // remove any blank lines from the textarea
-        $rows = str_replace("\r","\n", $rows); //fix for Mac Excel line ending issue - http://nicercode.github.io/blog/2013-04-30-excel-and-line-endings/
         $rows = str_replace("\r\n","\n", $rows); //fix for Windows line endings
+        $rows = str_replace("\r","\n", $rows); //fix for Mac Excel line ending issue - http://nicercode.github.io/blog/2013-04-30-excel-and-line-endings/
 
         $i=0;
         foreach($p->$actualFieldName->columns as $subfield){
