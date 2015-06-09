@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module {
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => 29,
+            'version' => 30,
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -80,7 +80,7 @@ class TableCsvImportExport extends WireData implements Module {
         $fieldset = $this->modules->get("InputfieldFieldset");
         $fieldset->attr('id', $fieldName . '_import_csv');
         $fieldset->label = __("Import CSV");
-        $fieldset->description = __("The structure of the CSV must match the table fields. Import will happen on page save." . ($this->fields->get($actualFieldName)->allow_overwrite != 1 || !$this->user->hasPermission("table-csv-import-overwrite") ? "\nImported data will be appended to existing rows." : ""));
+        $fieldset->description = __("The structure of the CSV must match the table fields. If you want to paste directly from Excel, use 'tab' separated. Import will happen on page save." . ($this->fields->get($actualFieldName)->allow_overwrite != 1 || !$this->user->hasPermission("table-csv-import-overwrite") ? "\nImported data will be appended to existing rows." : ""));
         $fieldset->collapsed = Inputfield::collapsedYes;
 
         if($this->fields->get($actualFieldName)->allow_overwrite == 1 && $this->user->hasPermission("table-csv-import-overwrite")){
