@@ -26,7 +26,7 @@ class ProcessTableCsvExport extends Process implements Module {
     public static function getModuleInfo() {
         return array(
             'title' => __('Process Table CSV Export'),
-            'version' => 26,
+            'version' => 27,
             'summary' => __('Helper module for creating CSV to export'),
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
             'singular' => true,
@@ -103,8 +103,26 @@ class ProcessTableCsvExport extends Process implements Module {
                 }
             }
             $i++;
+            $x=1;
             foreach($row as $name => $value){
+                $currentColumn = 'col'.$x.'type';
+                $fieldType = wire('fields')->$actualFieldName->$currentColumn;
+
+                if($fieldType == 'pageSelect' || $fieldType == 'pageRadios') {
+                    $value = wire('pages')->get($value->id)->title;
+                }
+                elseif($fieldType == 'pageSelectMultiple' || $fieldType == 'pageAsmSelect' || $fieldType == 'pageCheckboxes') {
+                    $pageTitles = array();
+                    foreach(explode('|', $value) as $v) {
+                        $pageTitles[] = wire('pages')->get($v)->title;
+                    }
+                    $value = implode(',', $pageTitles);
+                }
+                elseif($fieldType == 'selectMultiple') {
+                    $value = implode(',', $value);
+                }
                 if($name!='id') $csv[$i][] = $value;
+                $x++;
             }
         }
 
