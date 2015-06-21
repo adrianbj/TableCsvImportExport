@@ -26,7 +26,7 @@ class ProcessTableCsvExport extends Process implements Module {
     public static function getModuleInfo() {
         return array(
             'title' => __('Process Table CSV Export'),
-            'version' => 32,
+            'version' => 33,
             'summary' => __('Helper module for creating CSV to export'),
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
             'singular' => true,
@@ -76,7 +76,8 @@ class ProcessTableCsvExport extends Process implements Module {
         $delimiter = !is_null($event) ? $event->arguments(0) : wire('input')->get->cs;
         $enclosure = !is_null($event) ? $event->arguments(1) : wire('input')->get->ce;
         $extension = !is_null($event) ? $event->arguments(2) : wire('input')->get->ext;
-        $namesFirstRow = !is_null($event) ? $event->arguments(3) : wire('input')->get->nfr;
+        $multipleValuesSeparator = !is_null($event) ? $event->arguments(3) : wire('input')->get->mvs;
+        $namesFirstRow = !is_null($event) ? $event->arguments(4) : wire('input')->get->nfr;
         $namesFirstRow = $namesFirstRow == 'checked' ? true : false;
 
         $fieldName = !is_null($event) ? $event->object->name : wire('input')->get->fn;
@@ -103,6 +104,7 @@ class ProcessTableCsvExport extends Process implements Module {
         foreach($rows as $row){
             if($i==0 && $namesFirstRow == true){
                 foreach($columns as $colKey => $col) {
+                    if(!$col['name']) continue;
                     $csv[$i][] = $col['name'];
                 }
             }
@@ -110,8 +112,8 @@ class ProcessTableCsvExport extends Process implements Module {
 
             $x=1;
             foreach($columns as $col) {
-                $name = $col['name'];
-                $value = $row->$name;
+                if(!$col['name']) continue;
+                $value = $row->$col['name'];
 
                 $currentColumn = 'col'.$x.'type';
                 $fieldType = wire('fields')->$actualFieldName->$currentColumn;
@@ -124,12 +126,12 @@ class ProcessTableCsvExport extends Process implements Module {
                     foreach(explode('|', $value) as $v) {
                         $pageTitles[] = wire('pages')->get($v)->title;
                     }
-                    $value = implode(',', $pageTitles);
+                    $value = implode($multipleValuesSeparator, $pageTitles);
                 }
                 elseif($fieldType == 'selectMultiple') {
-                    $value = implode(',', $value);
+                    $value = implode($multipleValuesSeparator, $value);
                 }
-                if($name!='id') $csv[$i][] = $value;
+                if($col['name']!='id') $csv[$i][] = $value;
                 $x++;
             }
         }

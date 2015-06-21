@@ -10,7 +10,8 @@ $(document).ready(function() {
             "&cs="+$("#Inputfield_export_column_separator").val()+
             "&ce="+$("#Inputfield_export_column_enclosure").val()+
             "&ext="+$("#Inputfield_export_extension").val()+
-            "&nfr="+$("#Inputfield_export_names_first_row").attr('checked')
+            "&nfr="+$("#Inputfield_export_names_first_row").attr('checked')+
+            "&mvs="+$("#Inputfield_export_multiple_values_separator").val()
         );
         return false;
     });

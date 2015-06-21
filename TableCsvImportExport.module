@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module {
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => 32,
+            'version' => 33,
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -99,28 +99,36 @@ class TableCsvImportExport extends WireData implements Module {
         $f->label = __('Columns separated with');
         $f->notes = __('For tab separated, enter: tab');
         $f->value = ',';
-        $f->columnWidth = 25;
+        $f->columnWidth = 20;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldText");
         $f->name = $fieldName . '_import_column_enclosure';
         $f->label = __('Column enclosure');
         $f->value = '"';
-        $f->columnWidth = 25;
+        $f->columnWidth = 20;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldCheckbox");
         $f->name = $fieldName . '_convert_decimals';
         $f->label = __('Convert comma decimals to dots.');
         $f->notes = __('eg. 123,45 is converted to 123.45');
-        $f->columnWidth = 25;
+        $f->columnWidth = 20;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldCheckbox");
         $f->name = $fieldName . '_import_names_first_row';
         $f->label = __('Ignore the first row');
         $f->notes = __('Use this if the first row is column names');
-        $f->columnWidth = 25;
+        $f->columnWidth = 20;
+        $fieldset->add($f);
+
+        $f = $this->modules->get("InputfieldText");
+        $f->name = $fieldName . '_import_multiple_values_separator';
+        $f->label = __('Multiple values separated with');
+        $f->notes = __('For tab separated, enter: tab.');
+        $f->value = ',';
+        $f->columnWidth = 20;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldTextarea");
@@ -166,28 +174,36 @@ class TableCsvImportExport extends WireData implements Module {
         $f->label = __('Columns separated with');
         $f->notes = __('For tab separated, enter: tab');
         $f->value = ',';
-        $f->columnWidth = 25;
+        $f->columnWidth = 20;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldText");
         $f->name = 'export_column_enclosure';
         $f->label = __('Column enclosure');
         $f->value = '"';
-        $f->columnWidth = 25;
+        $f->columnWidth = 20;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldText");
         $f->name = 'export_extension';
         $f->label = __('File extension');
         $f->value = 'csv';
-        $f->columnWidth = 25;
+        $f->columnWidth = 20;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldCheckbox");
         $f->name = 'export_names_first_row';
         $f->label = __('Put column names in the first row');
         $f->attr('checked', 'checked');
-        $f->columnWidth = 25;
+        $f->columnWidth = 20;
+        $fieldset->add($f);
+
+        $f = $this->modules->get("InputfieldText");
+        $f->name = 'export_multiple_values_separator';
+        $f->label = __('Multiple values separated with');
+        $f->notes = __('For tab separated, enter: tab. For line break in Excel, enter: \r');
+        $f->value = ',';
+        $f->columnWidth = 20;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldButton");
@@ -256,7 +272,8 @@ class TableCsvImportExport extends WireData implements Module {
         if($convertDecimals == 1) $convertDecimals = true;
         $namesFirstRow = !is_null($event) ? $event->arguments(4) : $this->input->post->{$fieldName . '_import_names_first_row'};
         if($namesFirstRow == 'checked') $namesFirstRow = true;
-        $overwrite = !is_null($event) ? $event->arguments(5) : $this->input->post->{$fieldName . '_append_overwrite'};
+        $importMultipleValuesSeparator = !is_null($event) ? $event->arguments(5) : $this->input->post->{$fieldName . '_import_multiple_values_separator'};
+        $overwrite = !is_null($event) ? $event->arguments(6) : $this->input->post->{$fieldName . '_append_overwrite'};
 
         //get actual page, considering it might be a repeater
         if($actualFieldName != $fieldName) $repeaterId = str_replace($actualFieldName . '_repeater', '', $fieldName);
@@ -285,8 +302,7 @@ class TableCsvImportExport extends WireData implements Module {
         foreach(explode("\n",$rows) as $row){
 
             $x++;
-
-            if($x==1 && $namesFirstRow == true) continue; //ignore first row which contains column names
+            if($x==1 && $namesFirstRow) continue; //ignore first row which contains column names
 
             $data = str_getcsv($row, $delimiter == "tab" ? chr(9) : $delimiter, $enclosure);
 
@@ -295,35 +311,38 @@ class TableCsvImportExport extends WireData implements Module {
             $c=1;
             foreach($data as $subfieldKey => $fieldValue){
 
-                $currentColumnType = 'col'.$c.'type';
-                $currentColumnSelector = 'col'.$c.'selector';
-                $fieldType = wire('fields')->$actualFieldName->$currentColumnType;
-                $fieldSelector = wire('fields')->$actualFieldName->$currentColumnSelector;
+                if($fieldValue) {
 
+                    $currentColumnType = 'col'.$c.'type';
+                    $currentColumnSelector = 'col'.$c.'selector';
+                    $fieldType = wire('fields')->$actualFieldName->$currentColumnType;
+                    $fieldSelector = wire('fields')->$actualFieldName->$currentColumnSelector;
 
-                if($fieldType == 'pageSelect' || $fieldType == 'pageRadios') {
-                    $tableEntry->$subfieldNames[$subfieldKey] = wire('pages')->get("{$fieldSelector}, title={$fieldValue}")->id;
-                }
-                elseif($fieldType == 'pageSelectMultiple' || $fieldType == 'pageAsmSelect' || $fieldType == 'pageCheckboxes') {
-                    foreach(explode(',', $fieldValue) as $title) {
-                        $tableEntry->$subfieldNames[$subfieldKey]->add(wire('pages')->get("{$fieldSelector}, title={$title}")->id);
+                    if($fieldType == 'pageSelect' || $fieldType == 'pageRadios') {
+                        $tableEntry->$subfieldNames[$subfieldKey] = wire('pages')->get("{$fieldSelector}, title={$fieldValue}")->id;
                     }
-                }
-                elseif($fieldType == 'selectMultiple') {
-                    $tableEntry->$subfieldNames[$subfieldKey] = explode(',', $fieldValue);
-                }
-                else {
-                    $tableEntry->$subfieldNames[$subfieldKey] = $convertDecimals == true ? $this->convertDecimals($fieldValue) : $fieldValue;
+                    elseif($fieldType == 'pageSelectMultiple' || $fieldType == 'pageAsmSelect' || $fieldType == 'pageCheckboxes') {
+                        foreach(explode($importMultipleValuesSeparator, $fieldValue) as $title) {
+                            $tableEntry->$subfieldNames[$subfieldKey]->add(wire('pages')->get("{$fieldSelector}, title={$title}")->id);
+                        }
+                    }
+                    elseif($fieldType == 'selectMultiple') {
+                        $tableEntry->$subfieldNames[$subfieldKey] = explode($importMultipleValuesSeparator, $fieldValue);
+                    }
+                    else {
+                        $tableEntry->$subfieldNames[$subfieldKey] = $convertDecimals == true ? $this->convertDecimals($fieldValue) : $fieldValue;
+                    }
+
                 }
 
                 $c++;
             }
 
+            $p->of(false);
             $p->$actualFieldName->add($tableEntry);
-            $p->save($actualFieldName);
-
         }
 
+        $p->save($actualFieldName);
     }
 
 
