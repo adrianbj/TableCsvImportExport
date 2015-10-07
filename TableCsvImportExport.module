@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module {
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => 33,
+            'version' => 35,
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -286,7 +286,10 @@ class TableCsvImportExport extends WireData implements Module {
 
         $p->of(false);
 
-        if($overwrite == 'overwrite') $p->$actualFieldName->removeAll();
+        if($overwrite == 'overwrite') {
+            $p->$actualFieldName->removeAll();
+            $p->save($actualFieldName);
+        }
 
         $rows = trim(preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n", $csvData),"\n"); // remove any blank lines from the textarea
         $rows = str_replace("\r\n","\n", $rows); //fix for Windows line endings
@@ -311,7 +314,7 @@ class TableCsvImportExport extends WireData implements Module {
             $c=1;
             foreach($data as $subfieldKey => $fieldValue){
 
-                if($fieldValue) {
+                if($fieldValue != '') {
 
                     $currentColumnType = 'col'.$c.'type';
                     $currentColumnSelector = 'col'.$c.'selector';
