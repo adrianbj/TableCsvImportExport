@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module {
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => 35,
+            'version' => 36,
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -216,6 +216,7 @@ class TableCsvImportExport extends WireData implements Module {
 
         $f = $this->modules->get("InputfieldMarkup");
         $f->attr('name', 'iframe');
+        $f->collapsed = Inputfield::collapsedYes;
         $f->value = "<iframe id='download' src=''></iframe>";
         $fieldset->add($f);
 

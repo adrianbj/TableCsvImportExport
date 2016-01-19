@@ -1,6 +1,6 @@
 $(document).ready(function() {
 
-    $('.Inputfield_iframe').hide();
+    //$('.Inputfield_iframe').hide();
 
     $(document).on('click', '.export_csv', function(){
         $('#download').attr('src', config.urls.admin+
