@@ -38,6 +38,8 @@ $modules->get('TableCsvImportExport'); // load module
 $page->fields->tablefield->importCsv($csvData, ',', '"', false, true, ',', 'append');
 ```
 
+####Support forum:
+https://processwire.com/talk/topic/7905-profields-table-csv-importer-exporter/
 
 ## License
 
