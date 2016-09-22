@@ -26,7 +26,7 @@ class ProcessTableCsvExport extends Process implements Module {
     public static function getModuleInfo() {
         return array(
             'title' => __('Process Table CSV Export'),
-            'version' => 38,
+            'version' => 39,
             'summary' => __('Helper module for creating CSV to export'),
             'author' => 'Adrian Jones',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
@@ -114,7 +114,7 @@ class ProcessTableCsvExport extends Process implements Module {
             $x=1;
             foreach($columns as $col) {
                 if(!$col['name']) continue;
-                $value = $row->$col['name'];
+                $value = $row->{$col['name']};
 
                 $currentColumn = 'col'.$x.'type';
                 $fieldType = wire('fields')->$actualFieldName->$currentColumn;
