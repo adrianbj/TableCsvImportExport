@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module {
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => 39,
+            'version' => 40,
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -156,6 +156,8 @@ class TableCsvImportExport extends WireData implements Module {
         // we're interested in page editor only
         if(wire('page')->process != 'ProcessPageEdit') return;
 
+        $fieldName = $event->object->name;
+
         $conf = $this->getModuleInfo();
         $version = (int) $conf['version'];
         wire("config")->scripts->add($this->config->urls->TableCsvImportExport . "TableCsvImportExport.js?v={$version}");
@@ -169,7 +171,7 @@ class TableCsvImportExport extends WireData implements Module {
         $fieldset->collapsed = Inputfield::collapsedYes;
 
         $f = $this->modules->get("InputfieldText");
-        $f->name = 'export_column_separator';
+        $f->name = $fieldName . '_export_column_separator';
         $f->label = __('Columns separated with');
         $f->notes = __('For tab separated, enter: tab');
         $f->value = ',';
@@ -177,28 +179,28 @@ class TableCsvImportExport extends WireData implements Module {
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldText");
-        $f->name = 'export_column_enclosure';
+        $f->name = $fieldName . '_export_column_enclosure';
         $f->label = __('Column enclosure');
         $f->value = '"';
         $f->columnWidth = 20;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldText");
-        $f->name = 'export_extension';
+        $f->name = $fieldName . '_export_extension';
         $f->label = __('File extension');
         $f->value = 'csv';
         $f->columnWidth = 20;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldCheckbox");
-        $f->name = 'export_names_first_row';
+        $f->name = $fieldName . '_export_names_first_row';
         $f->label = __('Put column names in the first row');
         $f->attr('checked', 'checked');
         $f->columnWidth = 20;
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldText");
-        $f->name = 'export_multiple_values_separator';
+        $f->name = $fieldName . '_export_multiple_values_separator';
         $f->label = __('Multiple values separated with');
         $f->notes = __('For tab separated, enter: tab. For line break in Excel, enter: \r');
         $f->value = ',';
@@ -206,7 +208,7 @@ class TableCsvImportExport extends WireData implements Module {
         $fieldset->add($f);
 
         $f = $this->modules->get("InputfieldButton");
-        $f->name = 'export_button';
+        $f->name = $fieldName . '_export_button';
         $f->value = $this->_x('Export as CSV', 'button');
         $f->attr('class', 'ui-button ui-widget ui-corner-all ui-state-default export_csv');
         $f->attr('data-pageid', (int) $this->input->id);
