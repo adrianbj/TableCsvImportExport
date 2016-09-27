@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module {
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => 40,
+            'version' => 41,
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -261,6 +261,8 @@ class TableCsvImportExport extends WireData implements Module {
 
     public function importCsv($event = NULL){
 
+        set_time_limit(3600 * 12);
+
         $initial_auto_detect_line_endings = ini_get('auto_detect_line_endings');
         ini_set('auto_detect_line_endings', true);
 
@@ -269,16 +271,11 @@ class TableCsvImportExport extends WireData implements Module {
         //actual field name is never mangled with a repeater extension
         $actualFieldName = (strpos($fieldName, '_repeater') !== FALSE) ? strstr($fieldName, '_repeater', true) : $fieldName;
 
-        $csvData = !is_null($event) ? $event->arguments(0) : $this->session->{$fieldName . '_csv_data'};
-        unset($this->session->{$fieldName . '_csv_data'});
-        $delimiter = !is_null($event) ? $event->arguments(1) : $this->input->post->{$fieldName . '_import_column_separator'};
-        $enclosure = !is_null($event) ? $event->arguments(2) : $this->input->post->{$fieldName . '_import_column_enclosure'};
-        $convertDecimals = !is_null($event) ? $event->arguments(3) : $this->input->post->{$fieldName . '_convert_decimals'};
-        if($convertDecimals == 1) $convertDecimals = true;
-        $namesFirstRow = !is_null($event) ? $event->arguments(4) : $this->input->post->{$fieldName . '_import_names_first_row'};
-        if($namesFirstRow == 'checked') $namesFirstRow = true;
-        $importMultipleValuesSeparator = !is_null($event) ? $event->arguments(5) : $this->input->post->{$fieldName . '_import_multiple_values_separator'};
-        $overwrite = !is_null($event) ? $event->arguments(6) : $this->input->post->{$fieldName . '_append_overwrite'};
+        // get table field object
+        $tableField = $this->fields->get($actualFieldName);
+
+        // get table field type
+        $tablefieldtype = $tableField->type;
 
         //get actual page, considering it might be a repeater
         if($actualFieldName != $fieldName) $repeaterId = str_replace($actualFieldName . '_repeater', '', $fieldName);
@@ -291,14 +288,46 @@ class TableCsvImportExport extends WireData implements Module {
 
         $p->of(false);
 
+        $cnt = 0;
+        $paginationLimit = $tableField->get('paginationLimit');
+
+        if($paginationLimit) {
+            $tableRows = new TableRows($p, $tableField);
+        } else {
+            $tableRows = $p->$actualFieldName;
+        }
+
+        $csvData = !is_null($event) ? $event->arguments(0) : $this->session->{$fieldName . '_csv_data'};
+        unset($this->session->{$fieldName . '_csv_data'});
+        $delimiter = !is_null($event) ? $event->arguments(1) : $this->input->post->{$fieldName . '_import_column_separator'};
+        $enclosure = !is_null($event) ? $event->arguments(2) : $this->input->post->{$fieldName . '_import_column_enclosure'};
+        $convertDecimals = !is_null($event) ? $event->arguments(3) : $this->input->post->{$fieldName . '_convert_decimals'};
+        if($convertDecimals == 1) $convertDecimals = true;
+        $namesFirstRow = !is_null($event) ? $event->arguments(4) : $this->input->post->{$fieldName . '_import_names_first_row'};
+        if($namesFirstRow == 'checked') $namesFirstRow = true;
+        $importMultipleValuesSeparator = !is_null($event) ? $event->arguments(5) : $this->input->post->{$fieldName . '_import_multiple_values_separator'};
+        $overwrite = !is_null($event) ? $event->arguments(6) : $this->input->post->{$fieldName . '_append_overwrite'};
+
         if($overwrite == 'overwrite') {
-            $p->$actualFieldName->removeAll();
+            if($paginationLimit) {
+                $tablefieldtype->deletePageField($p, $tableField);
+            } else {
+                /*foreach($p->$actualFieldName as $row) {
+                    $tableRows->remove($row);
+                }*/
+                $p->$actualFieldName->removeAll();
+            }
             $p->save($actualFieldName);
         }
 
-        $rows = trim(preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n", $csvData),"\n"); // remove any blank lines from the textarea
-        $rows = str_replace("\r\n","\n", $rows); //fix for Windows line endings
-        $rows = str_replace("\r","\n", $rows); //fix for Mac Excel line ending issue - http://nicercode.github.io/blog/2013-04-30-excel-and-line-endings/
+        require_once __DIR__ . '/parsecsv.lib.php';
+
+        $rows = new parseCSV();
+        $rows->encoding('UTF-16', 'UTF-8');
+        $rows->heading = $namesFirstRow;
+        $rows->delimiter = $delimiter == "tab" ? chr(9) : $delimiter;
+        $rows->enclosure = $enclosure;
+        $rows->parse($csvData);
 
         $i=0;
         foreach($p->$actualFieldName->columns as $subfield){
@@ -306,18 +335,16 @@ class TableCsvImportExport extends WireData implements Module {
             $i++;
         }
 
-        $x=0;
-        foreach(explode("\n",$rows) as $row){
+        foreach($rows->data as $data){
 
-            $x++;
-            if($x==1 && $namesFirstRow) continue; //ignore first row which contains column names
-
-            $data = str_getcsv($row, $delimiter == "tab" ? chr(9) : $delimiter, $enclosure);
-
-            $tableEntry = $p->$actualFieldName->makeBlankItem();
+            $tableEntry = array();
 
             $c=1;
             foreach($data as $subfieldKey => $fieldValue){
+
+                // the $subfieldKey will often be the field name based on the first row of the CSV, but this might be wrong,
+                // so set it to the numeric key of the field so we can grab from $subfieldNames array
+                $subfieldKey = $c-1;
 
                 if($fieldValue != '') {
 
@@ -327,30 +354,37 @@ class TableCsvImportExport extends WireData implements Module {
                     $fieldSelector = wire('fields')->$actualFieldName->$currentColumnSelector;
 
                     if($fieldType == 'pageSelect' || $fieldType == 'pageRadios') {
-                        $tableEntry->{$subfieldNames[$subfieldKey]} = wire('pages')->get("{$fieldSelector}, title={$fieldValue}")->id;
+                        $tableEntry[$subfieldNames[$subfieldKey]] = wire('pages')->get("{$fieldSelector}, title={$fieldValue}")->id;
                     }
                     elseif($fieldType == 'pageSelectMultiple' || $fieldType == 'pageAsmSelect' || $fieldType == 'pageCheckboxes') {
                         foreach(explode($importMultipleValuesSeparator, $fieldValue) as $title) {
-                            $tableEntry->{$subfieldNames[$subfieldKey]}->add(wire('pages')->get("{$fieldSelector}, title={$title}")->id);
+                            $tableEntry[$subfieldNames[$subfieldKey]]->add(wire('pages')->get("{$fieldSelector}, title={$title}")->id);
                         }
                     }
                     elseif($fieldType == 'selectMultiple') {
-                        $tableEntry->{$subfieldNames[$subfieldKey]} = explode($importMultipleValuesSeparator, $fieldValue);
+                        $tableEntry[$subfieldNames[$subfieldKey]] = explode($importMultipleValuesSeparator, $fieldValue);
                     }
                     else {
-                        $tableEntry->{$subfieldNames[$subfieldKey]} = $convertDecimals == true ? $this->convertDecimals($fieldValue) : $fieldValue;
+                        $tableEntry[$subfieldNames[$subfieldKey]] = $convertDecimals == true ? $this->convertDecimals($fieldValue) : $fieldValue;
                     }
-
                 }
-
                 $c++;
             }
-
-            $p->of(false);
-            $p->$actualFieldName->add($tableEntry);
+            $item = $tableRows->new($tableEntry);
+            $tableRows->add($item);
+            if($paginationLimit && ++$cnt >= $paginationLimit) {
+                $tablefieldtype->savePageFieldRows($p, $tableField, $tableRows);
+                $tableRows = new TableRows($p, $tableField);
+                $cnt = 0;
+            }
         }
 
-        $p->save($actualFieldName);
+        if($paginationLimit) {
+            if($cnt) $tablefieldtype->savePageFieldRows($p, $tableField, $tableRows);
+        } else {
+            $p->set($actualFieldName, $tableRows);
+            $p->save($actualFieldName);
+        }
 
         ini_set('auto_detect_line_endings', $initial_auto_detect_line_endings);
 

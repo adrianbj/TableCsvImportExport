@@ -26,7 +26,7 @@ class ProcessTableCsvExport extends Process implements Module {
     public static function getModuleInfo() {
         return array(
             'title' => __('Process Table CSV Export'),
-            'version' => 40,
+            'version' => 41,
             'summary' => __('Helper module for creating CSV to export'),
             'author' => 'Adrian Jones',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
@@ -94,12 +94,16 @@ class ProcessTableCsvExport extends Process implements Module {
             $p = !is_null($event) ? $event->object->page : wire('pages')->get((int) wire('input')->get->pid);
         }
 
+        $p->of(false);
+        // needs to be before of(true), otherwise it returns 0
+        $totalRows = $p->$actualFieldName->getTotal();
+
         $p->of(true); //needed to have dates etc formatted in the CSV
 
         $csv = array();
         $i=0;
 
-        $rows = $p->$actualFieldName;
+        $rows = $p->$actualFieldName("limit=".$totalRows);
         $columns = $rows->getColumns();
 
         foreach($rows as $row){
