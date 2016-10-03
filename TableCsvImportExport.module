@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module {
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => 41,
+            'version' => 42,
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -155,7 +155,6 @@ class TableCsvImportExport extends WireData implements Module {
 
         // we're interested in page editor only
         if(wire('page')->process != 'ProcessPageEdit') return;
-
         $fieldName = $event->object->name;
 
         $conf = $this->getModuleInfo();
@@ -207,11 +206,28 @@ class TableCsvImportExport extends WireData implements Module {
         $f->columnWidth = 20;
         $fieldset->add($f);
 
+        $f = $this->modules->get("InputfieldAsmSelect");
+        $f->name = $fieldName . '_export_columns';
+        $f->label = __('Columns / Order to Export');
+        $p = $this->wire('process')->getPage();
+        $i=1;
+        $columns = array();
+        foreach($p->$fieldName->columns as $col) {
+            if($col['name']) {
+                $f->addOption($i, $p->$fieldName->getLabel($i));
+                $columns[] = $i;
+            }
+            $i++;
+        }
+        $f->value = $columns;
+        $f->columnWidth = 100;
+        $fieldset->add($f);
+
         $f = $this->modules->get("InputfieldButton");
         $f->name = $fieldName . '_export_button';
         $f->value = $this->_x('Export as CSV', 'button');
         $f->attr('class', 'ui-button ui-widget ui-corner-all ui-state-default export_csv');
-        $f->attr('data-pageid', (int) $this->input->id);
+        $f->attr('data-pageid', $p->id);
         $f->attr('data-fieldname', $event->object->name);
         $fieldset->add($f);
 
@@ -283,7 +299,7 @@ class TableCsvImportExport extends WireData implements Module {
             $p = $this->pages->get($repeaterId);
         }
         else {
-            $p = !is_null($event) ? $event->object->page : $this->pages->get((int) $this->input->get->id);
+            $p = !is_null($event) ? $event->object->page : $this->wire('process')->getPage();
         }
 
         $p->of(false);

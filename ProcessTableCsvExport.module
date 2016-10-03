@@ -26,7 +26,7 @@ class ProcessTableCsvExport extends Process implements Module {
     public static function getModuleInfo() {
         return array(
             'title' => __('Process Table CSV Export'),
-            'version' => 41,
+            'version' => 42,
             'summary' => __('Helper module for creating CSV to export'),
             'author' => 'Adrian Jones',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
@@ -73,12 +73,12 @@ class ProcessTableCsvExport extends Process implements Module {
 
 
     public function exportCsv($event = NULL) {
-
         $delimiter = !is_null($event) ? $event->arguments(0) : wire('input')->get->cs;
         $enclosure = !is_null($event) ? $event->arguments(1) : wire('input')->get->ce;
         $extension = !is_null($event) ? $event->arguments(2) : wire('input')->get->ext;
         $multipleValuesSeparator = !is_null($event) ? $event->arguments(3) : wire('input')->get->mvs;
         $namesFirstRow = !is_null($event) ? $event->arguments(4) : wire('input')->get->nfr;
+        $columnsToExport = !is_null($event) ? $event->arguments(5) : wire('input')->get->cte;
         $namesFirstRow = $namesFirstRow == 'checked' ? true : false;
 
         $fieldName = !is_null($event) ? $event->object->name : wire('input')->get->fn;
@@ -91,7 +91,7 @@ class ProcessTableCsvExport extends Process implements Module {
             $p = $this->pages->get($repeaterId);
         }
         else {
-            $p = !is_null($event) ? $event->object->page : wire('pages')->get((int) wire('input')->get->pid);
+            $p = !is_null($event) ? $event->object->page : wire('pages')->get((int)wire('input')->get->pid);
         }
 
         $p->of(false);
@@ -101,27 +101,28 @@ class ProcessTableCsvExport extends Process implements Module {
         $p->of(true); //needed to have dates etc formatted in the CSV
 
         $csv = array();
-        $i=0;
 
-        $rows = $p->$actualFieldName("limit=".$totalRows);
+        $rows = $p->$actualFieldName(wire('input')->get->filter."limit=".$totalRows);
         $columns = $rows->getColumns();
+        $columnsToExport = explode(",",$columnsToExport);
+        foreach($columnsToExport as $key => $val) {
+            $orderedColumns[$key] = $columns[$val];
+        }
 
+        $i=0;
         foreach($rows as $row){
             if($i==0 && $namesFirstRow == true){
-                foreach($columns as $colKey => $col) {
+                foreach($orderedColumns as $colKey => $col) {
                     if(!$col['name']) continue;
                     $csv[$i][] = $col['name'];
                 }
             }
-            $i++;
 
-            $x=1;
-            foreach($columns as $col) {
+            $i++;
+            foreach($orderedColumns as $colKey => $col) {
                 if(!$col['name']) continue;
                 $value = $row->{$col['name']};
-
-                $currentColumn = 'col'.$x.'type';
-                $fieldType = wire('fields')->$actualFieldName->$currentColumn;
+                $fieldType = $col['type'];
 
                 if($fieldType == 'pageSelect' || $fieldType == 'pageRadios') {
                     $value = wire('pages')->get($value->id)->title;
@@ -137,7 +138,6 @@ class ProcessTableCsvExport extends Process implements Module {
                     $value = implode($multipleValuesSeparator, $value);
                 }
                 $csv[$i][] = $value;
-                $x++;
             }
         }
 
