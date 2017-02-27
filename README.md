@@ -19,7 +19,7 @@ if($input->get->csv_export==1){
    $modules->get('ProcessTableCsvExport'); // load module
    // field name, delimiter, enclosure, file extension, multiple values separator, names in first row, columns to export, selector(filter) string
    // columns to export can be index starting at 1, or column names
-   $page->exportTableCsv('table_field_name', ',', '"', 'csv', ',', true, array('col1', 'col2'), 'year=2017');
+   $page->exportTableCsv('table_field_name', ',', '"', 'csv', '|', true, array('col1', 'col2'), 'year=2017');
 }
 // display content of template with link to same page with appended csv_export=1
 else{
