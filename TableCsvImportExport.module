@@ -22,22 +22,26 @@ class TableCsvImportExport extends WireData implements Module {
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => 45,
+            'version' => '1.0.0',
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
             'requires' => 'FieldtypeTable',
-            'installs' => 'ProcessTableCsvExport'
+            'installs' => 'ProcessTableCsvExport',
+            'permissions' => array(
+                'table-csv-import' => 'Access to Table CSV Import',
+                'table-csv-import-overwrite' => 'Access to choose overwrite option when using Table CSV Import'
+            )
         );
     }
 
 
     public function init() {
-        $this->addHookAfter('InputfieldTable::getConfigInputfields', $this, 'hookAddConfig');
-        $this->addHookAfter('InputfieldTable::render', $this, 'buildForms'); // when edit enabled
-        if($this->user->hasPermission("table-csv-export")) $this->addHookAfter('InputfieldTable::renderValue', $this, 'buildExportForm'); // when field locked
-        if($this->user->hasPermission("table-csv-import")) $this->addHookAfter('InputfieldTable::processInput', $this, 'processImport');
-        $this->addHook('Field::importCsv', $this, 'importCsv'); // not limited to table-csv-import permission because only relevant to front-end
+        $this->wire()->addHookAfter('InputfieldTable::getConfigInputfields', $this, 'hookAddConfig');
+        $this->wire()->addHookAfter('InputfieldTable::render', $this, 'buildForms'); // when edit enabled
+        if($this->wire('user')->hasPermission("table-csv-export")) $this->wire()->addHookAfter('InputfieldTable::renderValue', $this, 'buildExportForm'); // when field locked
+        if($this->wire('user')->hasPermission("table-csv-import")) $this->wire()->addHookAfter('InputfieldTable::processInput', $this, 'processImport');
+        $this->wire()->addHook('Field::importCsv', $this, 'importCsv'); // not limited to table-csv-import permission because only relevant to front-end
     }
 
 
@@ -46,12 +50,12 @@ class TableCsvImportExport extends WireData implements Module {
         // get existing inputfields from getConfigInputfields
         $inputfields = $event->return;
 
-        $f = $this->modules->get('InputfieldCheckbox');
+        $f = $this->wire('modules')->get('InputfieldCheckbox');
         $f->label = __('Allow CSV Import Overwrite Option');
         $f->description = __('If checked, users will have the option to overwrite, not just append, when adding data to table via the Table CSV Import/Export module.');
         $f->attr('name', 'allow_overwrite');
-        $value = $this->fields->get($event->object->name)->allow_overwrite;
-        $f->attr('checked', $this->fields->get($event->object->name)->allow_overwrite ? 'checked' : '' );
+        $value = $this->wire('fields')->get($event->object->name)->allow_overwrite;
+        $f->attr('checked', $this->wire('fields')->get($event->object->name)->allow_overwrite ? 'checked' : '' );
         $f->collapsed = Inputfield::collapsedBlank;
         $inputfields->append($f);
 
@@ -59,15 +63,15 @@ class TableCsvImportExport extends WireData implements Module {
 
 
     public function buildForms(HookEvent $event) {
-        if($this->user->hasPermission("table-csv-import")) $this->buildImportForm($event);
-        if($this->user->hasPermission("table-csv-export")) $this->buildExportForm($event);
+        if($this->wire('user')->hasPermission("table-csv-import")) $this->buildImportForm($event);
+        if($this->wire('user')->hasPermission("table-csv-export")) $this->buildExportForm($event);
     }
 
 
     public function buildImportForm(HookEvent $event) {
 
         // we're interested in page editor only
-        if(wire('page')->process != 'ProcessPageEdit') return;
+        if($this->wire('page')->process != 'ProcessPageEdit') return;
 
         $fieldName = $event->object->name;
 
@@ -76,14 +80,14 @@ class TableCsvImportExport extends WireData implements Module {
 
         $inputfields = new InputfieldWrapper();
 
-        $fieldset = $this->modules->get("InputfieldFieldset");
+        $fieldset = $this->wire('modules')->get("InputfieldFieldset");
         $fieldset->attr('id', $fieldName . '_import_csv');
         $fieldset->label = __("Import CSV");
-        $fieldset->description = __("The structure of the CSV must match the table fields. If you want to paste directly from Excel, use 'tab' separated. Import will happen on page save." . ($this->fields->get($actualFieldName)->allow_overwrite != 1 || !$this->user->hasPermission("table-csv-import-overwrite") ? "\nImported data will be appended to existing rows." : ""));
+        $fieldset->description = __("The structure of the CSV must match the table fields. If you want to paste directly from Excel, use 'tab' separated. Import will happen on page save." . ($this->wire('fields')->get($actualFieldName)->allow_overwrite != 1 || !$this->wire('user')->hasPermission("table-csv-import-overwrite") ? "\nImported data will be appended to existing rows." : ""));
         $fieldset->collapsed = Inputfield::collapsedYes;
 
-        if($this->fields->get($actualFieldName)->allow_overwrite == 1 && $this->user->hasPermission("table-csv-import-overwrite")){
-            $f = $this->modules->get("InputfieldSelect");
+        if($this->wire('fields')->get($actualFieldName)->allow_overwrite == 1 && $this->wire('user')->hasPermission("table-csv-import-overwrite")){
+            $f = $this->wire('modules')->get("InputfieldSelect");
             $f->name = $fieldName . '_append_overwrite';
             $f->label = __('Append or Overwrite');
             $f->description = __("Determines whether to append new rows, or overwrite all existing rows.");
@@ -93,7 +97,7 @@ class TableCsvImportExport extends WireData implements Module {
             $fieldset->add($f);
         }
 
-        $f = $this->modules->get("InputfieldText");
+        $f = $this->wire('modules')->get("InputfieldText");
         $f->name = $fieldName . '_import_column_separator';
         $f->label = __('Columns separated with');
         $f->notes = __('For tab separated, enter: tab');
@@ -101,28 +105,28 @@ class TableCsvImportExport extends WireData implements Module {
         $f->columnWidth = 20;
         $fieldset->add($f);
 
-        $f = $this->modules->get("InputfieldText");
+        $f = $this->wire('modules')->get("InputfieldText");
         $f->name = $fieldName . '_import_column_enclosure';
         $f->label = __('Column enclosure');
         $f->value = '"';
         $f->columnWidth = 20;
         $fieldset->add($f);
 
-        $f = $this->modules->get("InputfieldCheckbox");
+        $f = $this->wire('modules')->get("InputfieldCheckbox");
         $f->name = $fieldName . '_convert_decimals';
         $f->label = __('Convert comma decimals to dots.');
         $f->notes = __('eg. 123,45 is converted to 123.45');
         $f->columnWidth = 20;
         $fieldset->add($f);
 
-        $f = $this->modules->get("InputfieldCheckbox");
+        $f = $this->wire('modules')->get("InputfieldCheckbox");
         $f->name = $fieldName . '_import_names_first_row';
         $f->label = __('Ignore the first row');
         $f->notes = __('Use this if the first row is column names');
         $f->columnWidth = 20;
         $fieldset->add($f);
 
-        $f = $this->modules->get("InputfieldText");
+        $f = $this->wire('modules')->get("InputfieldText");
         $f->name = $fieldName . '_import_multiple_values_separator';
         $f->label = __('Multiple values separated with');
         $f->notes = __('For tab separated, enter: tab.');
@@ -130,14 +134,14 @@ class TableCsvImportExport extends WireData implements Module {
         $f->columnWidth = 20;
         $fieldset->add($f);
 
-        $f = $this->modules->get("InputfieldTextarea");
+        $f = $this->wire('modules')->get("InputfieldTextarea");
         $f->name = $fieldName . '_csv_data';
         $f->label = __('Paste in CSV Data');
         $f->notes = __('Be sure you match the settings above to the format of your data');
         $f->collapsed = Inputfield::collapsedYes;
         $fieldset->add($f);
 
-        $f = $this->modules->get("InputfieldMarkup");
+        $f = $this->wire('modules')->get("InputfieldMarkup");
         $f->label = __('Upload CSV File');
         $f->name = $fieldName . '_csv_upload';
         $f->value = "<input name='".$event->object->name."_csv_file' type='file' />";
@@ -154,22 +158,22 @@ class TableCsvImportExport extends WireData implements Module {
     public function buildExportForm(HookEvent $event) {
 
         // we're interested in page editor only
-        if(wire('page')->process != 'ProcessPageEdit') return;
+        if($this->wire('page')->process != 'ProcessPageEdit') return;
         $fieldName = $event->object->name;
 
         $conf = $this->getModuleInfo();
         $version = (int) $conf['version'];
-        wire("config")->scripts->add($this->config->urls->TableCsvImportExport . "TableCsvImportExport.js?v={$version}");
+        $this->wire('config')->scripts->add($this->wire('config')->urls->TableCsvImportExport . "TableCsvImportExport.js?v={$version}");
 
         $inputfields = new InputfieldWrapper();
 
-        $fieldset = $this->modules->get("InputfieldFieldset");
+        $fieldset = $this->wire('modules')->get("InputfieldFieldset");
         $fieldset->attr('id', 'export_csv');
         $fieldset->label = __("Export CSV");
         $fieldset->description = __("Export the content of this table to a CSV file");
         $fieldset->collapsed = Inputfield::collapsedYes;
 
-        $f = $this->modules->get("InputfieldText");
+        $f = $this->wire('modules')->get("InputfieldText");
         $f->name = $fieldName . '_export_column_separator';
         $f->label = __('Columns separated with');
         $f->notes = __('For tab separated, enter: tab');
@@ -177,28 +181,28 @@ class TableCsvImportExport extends WireData implements Module {
         $f->columnWidth = 20;
         $fieldset->add($f);
 
-        $f = $this->modules->get("InputfieldText");
+        $f = $this->wire('modules')->get("InputfieldText");
         $f->name = $fieldName . '_export_column_enclosure';
         $f->label = __('Column enclosure');
         $f->value = '"';
         $f->columnWidth = 20;
         $fieldset->add($f);
 
-        $f = $this->modules->get("InputfieldText");
+        $f = $this->wire('modules')->get("InputfieldText");
         $f->name = $fieldName . '_export_extension';
         $f->label = __('File extension');
         $f->value = 'csv';
         $f->columnWidth = 20;
         $fieldset->add($f);
 
-        $f = $this->modules->get("InputfieldCheckbox");
+        $f = $this->wire('modules')->get("InputfieldCheckbox");
         $f->name = $fieldName . '_export_names_first_row';
         $f->label = __('Put column names in the first row');
         $f->attr('checked', 'checked');
         $f->columnWidth = 20;
         $fieldset->add($f);
 
-        $f = $this->modules->get("InputfieldText");
+        $f = $this->wire('modules')->get("InputfieldText");
         $f->name = $fieldName . '_export_multiple_values_separator';
         $f->label = __('Multiple values separated with');
         $f->notes = __('For tab separated, enter: tab. For line break in Excel, enter: \r');
@@ -206,7 +210,7 @@ class TableCsvImportExport extends WireData implements Module {
         $f->columnWidth = 20;
         $fieldset->add($f);
 
-        $f = $this->modules->get("InputfieldAsmSelect");
+        $f = $this->wire('modules')->get("InputfieldAsmSelect");
         $f->name = $fieldName . '_export_columns';
         $f->label = __('Columns / Order to Export');
         $p = $this->wire('process')->getPage();
@@ -223,7 +227,7 @@ class TableCsvImportExport extends WireData implements Module {
         $f->columnWidth = 100;
         $fieldset->add($f);
 
-        $f = $this->modules->get("InputfieldButton");
+        $f = $this->wire('modules')->get("InputfieldButton");
         $f->name = $fieldName . '_export_button';
         $f->value = $this->_x('Export as CSV', 'button');
         $f->attr('class', 'ui-button ui-widget ui-corner-all ui-state-default export_csv');
@@ -231,7 +235,7 @@ class TableCsvImportExport extends WireData implements Module {
         $f->attr('data-fieldname', $event->object->name);
         $fieldset->add($f);
 
-        $f = $this->modules->get("InputfieldMarkup");
+        $f = $this->wire('modules')->get("InputfieldMarkup");
         $f->attr('name', 'iframe');
         $f->collapsed = Inputfield::collapsedYes;
         $f->value = "<iframe id='download' src=''></iframe>";
@@ -246,10 +250,10 @@ class TableCsvImportExport extends WireData implements Module {
     public function processImport(HookEvent $event) {
 
         $fieldName = $event->object->name;
-        $this->session->fieldName = $fieldName;
-        $csv_filename = $this->session->fieldName . '_csv_file';
+        $this->wire('session')->fieldName = $fieldName;
+        $csv_filename = $this->wire('session')->fieldName . '_csv_file';
 
-        if($this->input->post->{$fieldName . '_csv_data'} == '' && $_FILES[$csv_filename]["name"] == '') return;
+        if($this->wire('input')->post->{$fieldName . '_csv_data'} == '' && $_FILES[$csv_filename]["name"] == '') return;
 
         //CSV file upload
         if(isset($_FILES[$csv_filename]) && $_FILES[$csv_filename]["name"] !== ''){
@@ -257,17 +261,17 @@ class TableCsvImportExport extends WireData implements Module {
             $csv_file_extension = pathinfo($_FILES[$csv_filename]["name"], PATHINFO_EXTENSION);
 
             if($csv_file_extension == 'csv' || $csv_file_extension == 'txt' || $csv_file_extension == 'tsv'){
-                $this->session->{$fieldName . '_csv_data'} = file_get_contents($_FILES[$csv_filename]["tmp_name"]);
+                $this->wire('session')->{$fieldName . '_csv_data'} = file_get_contents($_FILES[$csv_filename]["tmp_name"]);
             }
             else{
-                $this->error($this->_("That is not an allowed file extension for a CSV import. Try again with a .csv, .tsv, or .txt file"));
+                $this->wire()->error($this->_("That is not an allowed file extension for a CSV import. Try again with a .csv, .tsv, or .txt file"));
             }
 
             unlink($_FILES[$csv_filename]["tmp_name"]);
         }
 
         // CSV pasted in
-        if($this->input->post->{$fieldName . '_csv_data'} != '') $this->session->{$fieldName . '_csv_data'} = $this->input->post->{$fieldName . '_csv_data'};
+        if($this->wire('input')->post->{$fieldName . '_csv_data'} != '') $this->wire('session')->{$fieldName . '_csv_data'} = $this->wire('input')->post->{$fieldName . '_csv_data'};
 
         // Import
         $this->importCsv();
@@ -282,13 +286,13 @@ class TableCsvImportExport extends WireData implements Module {
         $initial_auto_detect_line_endings = ini_get('auto_detect_line_endings');
         ini_set('auto_detect_line_endings', true);
 
-        $fieldName = !is_null($event) ? $event->object->name : $this->session->fieldName;
+        $fieldName = !is_null($event) ? $event->object->name : $this->wire('session')->fieldName;
 
         //actual field name is never mangled with a repeater extension
         $actualFieldName = (strpos($fieldName, '_repeater') !== FALSE) ? strstr($fieldName, '_repeater', true) : $fieldName;
 
         // get table field object
-        $tableField = $this->fields->get($actualFieldName);
+        $tableField = $this->wire('fields')->get($actualFieldName);
 
         // get table field type
         $tablefieldtype = $tableField->type;
@@ -296,7 +300,7 @@ class TableCsvImportExport extends WireData implements Module {
         //get actual page, considering it might be a repeater
         if($actualFieldName != $fieldName) $repeaterId = str_replace($actualFieldName . '_repeater', '', $fieldName);
         if(isset($repeaterId)) {
-            $p = $this->pages->get($repeaterId);
+            $p = $this->wire('pages')->get($repeaterId);
         }
         else {
             $p = !is_null($event) ? $event->object->page : $this->wire('process')->getPage();
@@ -313,16 +317,16 @@ class TableCsvImportExport extends WireData implements Module {
             $tableRows = $p->$actualFieldName;
         }
 
-        $csvData = !is_null($event) ? $event->arguments(0) : $this->session->{$fieldName . '_csv_data'};
-        unset($this->session->{$fieldName . '_csv_data'});
-        $delimiter = !is_null($event) ? $event->arguments(1) : $this->input->post->{$fieldName . '_import_column_separator'};
-        $enclosure = !is_null($event) ? $event->arguments(2) : $this->input->post->{$fieldName . '_import_column_enclosure'};
-        $convertDecimals = !is_null($event) ? $event->arguments(3) : $this->input->post->{$fieldName . '_convert_decimals'};
+        $csvData = !is_null($event) ? $event->arguments(0) : $this->wire('session')->{$fieldName . '_csv_data'};
+        unset($this->wire('session')->{$fieldName . '_csv_data'});
+        $delimiter = !is_null($event) ? $event->arguments(1) : $this->wire('input')->post->{$fieldName . '_import_column_separator'};
+        $enclosure = !is_null($event) ? $event->arguments(2) : $this->wire('input')->post->{$fieldName . '_import_column_enclosure'};
+        $convertDecimals = !is_null($event) ? $event->arguments(3) : $this->wire('input')->post->{$fieldName . '_convert_decimals'};
         if($convertDecimals == 1) $convertDecimals = true;
-        $namesFirstRow = !is_null($event) ? $event->arguments(4) : $this->input->post->{$fieldName . '_import_names_first_row'};
+        $namesFirstRow = !is_null($event) ? $event->arguments(4) : $this->wire('input')->post->{$fieldName . '_import_names_first_row'};
         if($namesFirstRow == 'checked') $namesFirstRow = true;
-        $importMultipleValuesSeparator = !is_null($event) ? $event->arguments(5) : $this->input->post->{$fieldName . '_import_multiple_values_separator'};
-        $overwrite = !is_null($event) ? $event->arguments(6) : $this->input->post->{$fieldName . '_append_overwrite'};
+        $importMultipleValuesSeparator = !is_null($event) ? $event->arguments(5) : $this->wire('input')->post->{$fieldName . '_import_multiple_values_separator'};
+        $overwrite = !is_null($event) ? $event->arguments(6) : $this->wire('input')->post->{$fieldName . '_append_overwrite'};
 
         if($overwrite == 'overwrite') {
             if($paginationLimit) {
@@ -369,15 +373,15 @@ class TableCsvImportExport extends WireData implements Module {
 
                     $currentColumnType = 'col'.$c.'type';
                     $currentColumnSelector = 'col'.$c.'selector';
-                    $fieldType = wire('fields')->$actualFieldName->$currentColumnType;
-                    $fieldSelector = wire('fields')->$actualFieldName->$currentColumnSelector;
+                    $fieldType = $this->wire('fields')->$actualFieldName->$currentColumnType;
+                    $fieldSelector = $this->wire('fields')->$actualFieldName->$currentColumnSelector;
 
                     if($fieldType == 'pageSelect' || $fieldType == 'pageRadios') {
-                        $tableEntry[$subfieldNames[$subfieldKey]] = wire('pages')->get("{$fieldSelector}, title={$fieldValue}")->id;
+                        $tableEntry[$subfieldNames[$subfieldKey]] = $this->wire('pages')->get("{$fieldSelector}, title={$fieldValue}")->id;
                     }
                     elseif($fieldType == 'pageSelectMultiple' || $fieldType == 'pageAsmSelect' || $fieldType == 'pageCheckboxes') {
                         foreach(explode($importMultipleValuesSeparator, $fieldValue) as $title) {
-                            $tableEntry[$subfieldNames[$subfieldKey]]->add(wire('pages')->get("{$fieldSelector}, title={$title}")->id);
+                            $tableEntry[$subfieldNames[$subfieldKey]]->add($this->wire('pages')->get("{$fieldSelector}, title={$title}")->id);
                         }
                     }
                     elseif($fieldType == 'selectMultiple') {
@@ -422,74 +426,5 @@ class TableCsvImportExport extends WireData implements Module {
             return $value;
         }
     }
-
-
-    /**
-     * Called only when your module is installed
-     *
-     * Create a new permission.
-     *
-     */
-    public function ___install() {
-        $permission = $this->permissions->get('table-csv-import');
-        if (!$permission->id) {
-            $p = new Permission();
-            $p->name = 'table-csv-import';
-            $p->title = $this->_('Access to Table CSV Import');
-            $p->save();
-            // tell the user we created this module's permission
-            $this->message($this->_("Created New Permission: table-csv-import"));
-            $this->message($this->_("Assigned table-csv-import permission to superuser"));
-        }
-
-        $permission = $this->permissions->get('table-csv-import-overwrite');
-        if (!$permission->id) {
-            $p = new Permission();
-            $p->name = 'table-csv-import-overwrite';
-            $p->title = $this->_('Access to choose overwrite option when using Table CSV Import');
-            $p->save();
-            // tell the user we created this module's permission
-            $this->message($this->_("Created New Permission: table-csv-import-overwrite"));
-            $this->message($this->_("Assigned table-csv-import-overwrite permission to superuser"));
-        }
-
-        $permission = $this->permissions->get('table-csv-export');
-        if (!$permission->id) {
-            $p = new Permission();
-            $p->name = 'table-csv-export';
-            $p->title = $this->_('Access to Table CSV Export');
-            $p->save();
-            // tell the user we created this module's permission
-            $this->message($this->_("Created New Permission: table-csv-export"));
-            $this->message($this->_("Assigned table-csv-export permission to superuser"));
-        }
-
-        $su = $this->roles->get("superuser");
-        $su->addPermission("table-csv-import");
-        $su->addPermission("table-csv-import-overwrite");
-        $su->addPermission("table-csv-export");
-        $su->save();
-    }
-
-    /**
-     * Called only when your module is uninstalled
-     *
-     * Remove the special permission
-     *
-     */
-    public function ___uninstall() {
-        $permission = $this->permissions->get('table-csv-import');
-        if ($permission->id) {
-            $permission->delete();
-            $this->message($this->_("Deleted Permission: table-csv-import"));
-        }
-        $permission = $this->permissions->get('table-csv-export');
-        if ($permission->id) {
-            $permission->delete();
-            $this->message($this->_("Deleted Permission: table-csv-export"));
-        }
-    }
-
-
 
 }

@@ -26,23 +26,25 @@ class ProcessTableCsvExport extends Process implements Module {
     public static function getModuleInfo() {
         return array(
             'title' => __('Process Table CSV Export'),
-            'version' => 45,
+            'version' => '1.0.0',
             'summary' => __('Helper module for creating CSV to export'),
             'author' => 'Adrian Jones',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
             'singular' => true,
             'autoload' => false,
+            'page' => array(
+                'name' => 'table-csv-export',
+                'parent' => 'setup',
+                'title' => 'Table CSV Export',
+                'status' => 'hidden'
+            ),
             'permission' => 'table-csv-export',
-            'requires' => 'TableCsvImportExport'
+            'permissions' => array(
+                'table-csv-export' => 'Access to Table CSV Export'
+            ),
+            'requires' => 'TableCsvImportExport',
             );
     }
-
-    /**
-     * Name used for the page created in the admin
-     *
-     */
-    const adminPageName = 'table-csv-export';
-
 
 
     /**
@@ -51,7 +53,7 @@ class ProcessTableCsvExport extends Process implements Module {
      */
     public function init() {
         parent::init();
-        $this->addHook('Field::exportCsv', $this, 'exportCsv'); // not limited to table-csv-export permission because only relevant to front-end
+        $this->wire()->addHook('Page::exportTableCsv', $this, 'exportCsv'); // not limited to table-csv-export permission because only relevant to front-end
     }
 
     /**
@@ -73,30 +75,33 @@ class ProcessTableCsvExport extends Process implements Module {
 
 
     public function exportCsv($event = NULL) {
-        $delimiter = !is_null($event) ? $event->arguments(0) : wire('input')->get->cs;
-        $enclosure = !is_null($event) ? $event->arguments(1) : wire('input')->get->ce;
-        $extension = !is_null($event) ? $event->arguments(2) : wire('input')->get->ext;
-        $multipleValuesSeparator = !is_null($event) ? $event->arguments(3) : wire('input')->get->mvs;
+        $delimiter = !is_null($event) ? $event->arguments(1) : $this->wire('input')->get->cs;
+        $enclosure = !is_null($event) ? $event->arguments(2) : $this->wire('input')->get->ce;
+        $extension = !is_null($event) ? $event->arguments(3) : $this->wire('input')->get->ext;
+        $multipleValuesSeparator = !is_null($event) ? $event->arguments(4) : $this->wire('input')->get->mvs;
         if($multipleValuesSeparator == '\r') $multipleValuesSeparator = chr(13);
         if($multipleValuesSeparator == '\n') $multipleValuesSeparator = chr(10);
-        $namesFirstRow = !is_null($event) ? $event->arguments(4) : wire('input')->get->nfr;
-        $columnsToExport = !is_null($event) ? $event->arguments(5) : wire('input')->get->cte;
+        $namesFirstRow = !is_null($event) ? $event->arguments(5) : $this->wire('input')->get->nfr;
+        $columnsToExport = !is_null($event) ? $event->arguments(6) : $this->wire('input')->get->cte;
+        $filter = !is_null($event) ? $event->arguments(7) : $this->wire('input')->get->filter;
+
         $namesFirstRow = $namesFirstRow == 'checked' ? true : false;
 
-        $fieldName = !is_null($event) ? $event->object->name : wire('input')->get->fn;
+        $fieldName = !is_null($event) ? $event->arguments(0) : $this->wire('input')->get->fn;
         //actual field name is never mangled with a repeater extension
         $actualFieldName = (strpos($fieldName, '_repeater') !== FALSE) ? strstr($fieldName, '_repeater', true) : $fieldName;
 
         //get actual page, considering it might be a repeater
         if($actualFieldName != $fieldName) $repeaterId = str_replace($actualFieldName . '_repeater', '', $fieldName);
         if(isset($repeaterId)) {
-            $p = $this->pages->get($repeaterId);
+            $p = $this->wire('pages')->get($repeaterId);
         }
         else {
-            $p = !is_null($event) ? $event->object->page : wire('pages')->get((int)wire('input')->get->pid);
+            $p = !is_null($event) ? $event->object : $this->wire('pages')->get((int)$this->wire('input')->get->pid);
         }
 
         $p->of(false);
+
         // needs to be before of(true), otherwise it returns 0
         $totalRows = $p->$actualFieldName->getTotal();
 
@@ -104,10 +109,19 @@ class ProcessTableCsvExport extends Process implements Module {
 
         $csv = array();
 
-        $rows = $p->$actualFieldName(wire('input')->get->filter."limit=".$totalRows);
+        $rows = $p->$actualFieldName(trim($filter, ',').", limit=".$totalRows);
         $columns = $rows->getColumns();
-        $columnsToExport = explode(",",$columnsToExport);
+
+        // if $columnsToExport not provided, then export all columns
+        if(empty($columnsToExport)) $columnsToExport = array_keys($columns);
+
+        $columnsToExport = is_array($columnsToExport) ? $columnsToExport : explode(",", $columnsToExport);
         foreach($columnsToExport as $key => $val) {
+            // if column names provided instead of indices
+            if(!is_numeric($val)) {
+                $col = $p->$actualFieldName->getColumn($val);
+                $val = $col['sort'];
+            }
             $orderedColumns[$key] = $columns[$val];
         }
 
@@ -127,12 +141,12 @@ class ProcessTableCsvExport extends Process implements Module {
                 $fieldType = $col['type'];
 
                 if($fieldType == 'pageSelect' || $fieldType == 'pageRadios') {
-                    $value = wire('pages')->get($value->id)->title;
+                    $value = $this->wire('pages')->get($value->id)->title;
                 }
                 elseif($fieldType == 'pageSelectMultiple' || $fieldType == 'pageAsmSelect' || $fieldType == 'pageCheckboxes') {
                     $pageTitles = array();
                     foreach(explode('|', $value) as $v) {
-                        $pageTitles[] = wire('pages')->get($v)->title;
+                        $pageTitles[] = $this->wire('pages')->get($v)->title;
                     }
                     $value = implode($multipleValuesSeparator, $pageTitles);
                 }
@@ -152,55 +166,5 @@ class ProcessTableCsvExport extends Process implements Module {
         exit;
 
     }
-
-
-
-    /**
-     * Install the module and create the page where it lives
-     *
-     */
-    public function ___install() {
-
-        $page = $this->getInstalledPage();
-        $this->message("Installed to {$page->path}");
-
-    }
-
-    /**
-     * Return the page that this Process is installed on
-     *
-     */
-    protected function getInstalledPage() {
-
-        $parent = $this->pages->get("name=page,parent=".$this->config->adminRootPageID);
-        $page = $parent->child("name=" . self::adminPageName);
-
-        if(!$page->id) {
-            $page = new Page();
-            $page->template = 'admin';
-            $page->parent = $this->pages->get($this->config->adminRootPageID)->child('name=setup');
-            $page->title = 'Table CSV Export';
-            $page->name = self::adminPageName;
-            $page->process = $this;
-            $page->status = Page::statusHidden;
-            $page->save();
-        }
-
-        return $page;
-    }
-
-    /**
-     * Uninstall the module
-     *
-     */
-    public function ___uninstall() {
-        $moduleID = $this->modules->getModuleID($this);
-        $page = $this->pages->get("template=admin, process=$moduleID, name=" . self::adminPageName);
-        if($page->id) {
-            $this->message("Removed {$page->path}");
-            $this->pages->delete($page);
-        }
-    }
-
 
 }
