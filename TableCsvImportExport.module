@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module {
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => '1.0.1',
+            'version' => '1.0.2',
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -39,7 +39,6 @@ class TableCsvImportExport extends WireData implements Module {
     public function init() {
         $this->wire()->addHookAfter('InputfieldTable::getConfigInputfields', $this, 'hookAddConfig');
         $this->wire()->addHookAfter('InputfieldTable::render', $this, 'buildForms'); // when edit enabled
-        if($this->wire('user')->hasPermission("table-csv-export")) $this->wire()->addHookAfter('InputfieldTable::renderValue', $this, 'buildExportForm'); // when field locked
         if($this->wire('user')->hasPermission("table-csv-import")) $this->wire()->addHookAfter('InputfieldTable::processInput', $this, 'processImport');
         $this->wire()->addHook('Field::importCsv', $this, 'importCsv'); // not limited to table-csv-import permission because only relevant to front-end
     }
@@ -224,7 +223,6 @@ class TableCsvImportExport extends WireData implements Module {
             $i++;
         }
         $f->value = $columns;
-        $f->columnWidth = 100;
         $fieldset->add($f);
 
         $f = $this->wire('modules')->get("InputfieldButton");
@@ -236,7 +234,7 @@ class TableCsvImportExport extends WireData implements Module {
         $fieldset->add($f);
 
         $f = $this->wire('modules')->get("InputfieldMarkup");
-        $f->attr('name', 'iframe');
+        $f->attr('name', 'tableExportIframe');
         $f->collapsed = Inputfield::collapsedYes;
         $f->value = "<iframe id='download' src=''></iframe>";
         $fieldset->add($f);
