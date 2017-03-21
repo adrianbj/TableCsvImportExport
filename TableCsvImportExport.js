@@ -90,7 +90,6 @@ $(document).ready(function() {
         var $table = $('.Inputfield_'+$(this).attr('data-fieldname')).find('.InputfieldTableSearch');
         var $cols = $table.find('td');
         var selector = buildSelector($cols);
-        console.log(selector);
 
         $('#download').attr('src', config.urls.admin+"setup/table-csv-export/?"+
             "pid="+$(this).attr('data-pageid')+
@@ -105,4 +104,9 @@ $(document).ready(function() {
         );
         return false;
     });
+
+    // hack to make export button display when field visibility is Locked (not editable)
+    // https://github.com/processwire/processwire-issues/issues/218
+    $("[class$=export_button]").css("display","block");
+
 });
