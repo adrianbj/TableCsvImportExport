@@ -75,15 +75,35 @@ class ProcessTableCsvExport extends Process implements Module {
 
 
     public function exportCsv($event = NULL) {
-        $delimiter = !is_null($event) ? $event->arguments(1) : $this->wire('input')->get->cs;
-        $enclosure = !is_null($event) ? $event->arguments(2) : $this->wire('input')->get->ce;
-        $extension = !is_null($event) ? $event->arguments(3) : $this->wire('input')->get->ext;
-        $multipleValuesSeparator = !is_null($event) ? $event->arguments(4) : $this->wire('input')->get->mvs;
+        if(!is_null($event)) {
+            $configSettings = wire('modules')->getModuleConfigData("TableCsvImportExport");
+            $translatedOptions = array(
+                'delimiter' => $configSettings['csvExportFieldSeparator'],
+                'enclosure' => $configSettings['csvExportFieldEnclosure'],
+                'extension' => $configSettings['csvExportExtension'],
+                'multipleValuesSeparator' => $configSettings['exportMultipleValuesSeparator'],
+                'namesFirstRow' => $configSettings['exportColumnsFirstRow'],
+                'columns' => array(),
+                'filter' => null,
+                'selector' => null
+            );
+            $options = $event->arguments(1);
+            $options = array_merge($translatedOptions, $options);
+        }
+
+        $delimiter = !is_null($event) ? $options['delimiter'] : $this->wire('input')->get->cs;
+        $enclosure = !is_null($event) ? $options['enclosure'] : $this->wire('input')->get->ce;
+        $extension = !is_null($event) ? $options['extension'] : $this->wire('input')->get->ext;
+        $multipleValuesSeparator = !is_null($event) ? $options['multipleValuesSeparator'] : $this->wire('input')->get->mvs;
         if($multipleValuesSeparator == '\r') $multipleValuesSeparator = chr(13);
         if($multipleValuesSeparator == '\n') $multipleValuesSeparator = chr(10);
-        $namesFirstRow = !is_null($event) ? $event->arguments(5) : $this->wire('input')->get->nfr;
-        $columnsToExport = !is_null($event) ? $event->arguments(6) : $this->wire('input')->get->cte;
-        $filter = !is_null($event) ? $event->arguments(7) . ',' : $this->wire('input')->get->filter;
+        $namesFirstRow = !is_null($event) ? $options['namesFirstRow'] : $this->wire('input')->get->nfr;
+        $columnsToExport = !is_null($event) ? $options['columns'] : $this->wire('input')->get->cte;
+        $selector = !is_null($event) ? $options['selector'] . ',' : $this->wire('input')->get->selector;
+        $filter = !is_null($event) ? $options['selector'] . ',' : $this->wire('input')->get->filter;
+
+        // override filter (Table Find GUI) with selector if provided
+        if($selector) $filter = $selector;
 
         $namesFirstRow = $namesFirstRow == 'checked' ? true : false;
 
@@ -105,15 +125,17 @@ class ProcessTableCsvExport extends Process implements Module {
         // needs to be before of(true), otherwise it returns 0
         $totalRows = $p->$actualFieldName->getTotal();
 
-        $p->of(true); //needed to have dates etc formatted in the CSV
+        // make dates etc formatted in the CSV
+        $p->of(true);
 
         $csv = array();
-
-        $rows = $p->$actualFieldName(ltrim($filter, ',')." limit=".$totalRows);
+        if(!isset($filter) || $filter == 'undefined') $filter = '';
+        $filter = rtrim($filter, ',');
+        $rows = $p->$actualFieldName(ltrim(str_replace($actualFieldName.'.', '', $filter).", limit=".$totalRows, ','));
         $columns = $rows->getColumns();
 
         // if $columnsToExport not provided, then export all columns
-        if(empty($columnsToExport)) $columnsToExport = array_keys($columns);
+        if(empty($columnsToExport) || $columnsToExport == 'undefined') $columnsToExport = array_keys($columns);
 
         $columnsToExport = is_array($columnsToExport) ? $columnsToExport : explode(",", $columnsToExport);
         foreach($columnsToExport as $key => $val) {
@@ -141,7 +163,7 @@ class ProcessTableCsvExport extends Process implements Module {
                 $fieldType = $col['type'];
 
                 if($fieldType == 'pageSelect' || $fieldType == 'pageRadios') {
-                    $value = $this->wire('pages')->get($value->id)->title;
+                    $value = $value->title;
                 }
                 elseif($fieldType == 'pageSelectMultiple' || $fieldType == 'pageAsmSelect' || $fieldType == 'pageCheckboxes') {
                     $pageTitles = array();

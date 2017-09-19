@@ -15,19 +15,19 @@
  *
  */
 
-class TableCsvImportExport extends WireData implements Module {
+class TableCsvImportExport extends WireData implements Module, ConfigurableModule {
 
     public static function getModuleInfo() {
         return array(
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => '1.0.3',
+            'version' => '2.0.0',
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
             'requires' => 'FieldtypeTable',
-            'installs' => 'ProcessTableCsvExport',
+            'installs' => 'ProcessTableexport',
             'permissions' => array(
                 'table-csv-import' => 'Access to Table CSV Import',
                 'table-csv-import-overwrite' => 'Access to choose overwrite option when using Table CSV Import'
@@ -36,11 +36,47 @@ class TableCsvImportExport extends WireData implements Module {
     }
 
 
+   /**
+     * Default configuration for module
+     *
+     */
+    static public function getDefaultData() {
+        return array(
+            "importFieldSeparator" => ',',
+            "importFieldEnclosure" => '"',
+            "importConvertDecimals" => '',
+            "importNamesFirstRow" => '',
+            "importMultipleValuesSeparator" => '|',
+            "allowOverrideimportSettings" => 1,
+            "exportFieldSeparator" => ',',
+            "exportFieldEnclosure" => '"',
+            "exportExtension" => 'csv',
+            "exportNamesFirstRow" => 1,
+            "exportMultipleValuesSeparator" => '|',
+            "allowOverrideexportSettings" => 1,
+            "allowexportFilter" => 1,
+            "allowexportColumns" => 1
+
+
+        );
+    }
+
+    /**
+     * Populate the default config data
+     *
+     */
+    public function __construct() {
+        foreach(self::getDefaultData() as $key => $value) {
+            $this->$key = $value;
+        }
+    }
+
+
     public function init() {
         $this->wire()->addHookAfter('InputfieldTable::getConfigInputfields', $this, 'hookAddConfig');
         $this->wire()->addHookAfter('InputfieldTable::render', $this, 'buildForms'); // when edit enabled
         if($this->wire('user')->hasPermission("table-csv-import")) $this->wire()->addHookAfter('InputfieldTable::processInput', $this, 'processImport');
-        $this->wire()->addHook('Field::importCsv', $this, 'importCsv'); // not limited to table-csv-import permission because only relevant to front-end
+        $this->wire()->addHook('Page::importTableCsv', $this, 'importCsv'); // not limited to table-csv-import permission because only relevant to front-end
     }
 
 
@@ -52,6 +88,7 @@ class TableCsvImportExport extends WireData implements Module {
         $f = $this->wire('modules')->get('InputfieldCheckbox');
         $f->label = __('Allow CSV Import Overwrite Option');
         $f->description = __('If checked, users will have the option to overwrite, not just append, when adding data to table via the Table CSV Import/Export module.');
+        $f->notes = __('Non-superusers will also need the "table-csv-import-overwrite" permission.');
         $f->attr('name', 'allow_overwrite');
         $value = $this->wire('fields')->get($event->object->name)->allow_overwrite;
         $f->attr('checked', $this->wire('fields')->get($event->object->name)->allow_overwrite ? 'checked' : '' );
@@ -82,7 +119,7 @@ class TableCsvImportExport extends WireData implements Module {
         $fieldset = $this->wire('modules')->get("InputfieldFieldset");
         $fieldset->attr('id', $fieldName . '_import_csv');
         $fieldset->label = __("Import CSV");
-        $fieldset->description = __("The structure of the CSV must match the table fields. If you want to paste directly from Excel, use 'tab' separated. Import will happen on page save." . ($this->wire('fields')->get($actualFieldName)->allow_overwrite != 1 || !$this->wire('user')->hasPermission("table-csv-import-overwrite") ? "\nImported data will be appended to existing rows." : ""));
+        $fieldset->description = __("The structure of the CSV must match the table fields. Import will happen on page save." . ($this->wire('fields')->get($actualFieldName)->allow_overwrite != 1 || !$this->wire('user')->hasPermission("table-csv-import-overwrite") ? "\nImported data will be appended to existing rows." : ""));
         $fieldset->collapsed = Inputfield::collapsedYes;
 
         if($this->wire('fields')->get($actualFieldName)->allow_overwrite == 1 && $this->wire('user')->hasPermission("table-csv-import-overwrite")){
@@ -96,40 +133,43 @@ class TableCsvImportExport extends WireData implements Module {
             $fieldset->add($f);
         }
 
-        $f = $this->wire('modules')->get("InputfieldText");
+        $f = $this->data['allowOverrideimportSettings'] ? $this->wire('modules')->get("InputfieldText") : $this->wire('modules')->get("InputfieldHidden");
         $f->name = $fieldName . '_import_column_separator';
         $f->label = __('Columns separated with');
+        $f->description = __("If you want to paste directly from Excel, use 'tab' separated.");
         $f->notes = __('For tab separated, enter: tab');
-        $f->value = ',';
+        $f->value = $this->data['importFieldSeparator'];
         $f->columnWidth = 20;
         $fieldset->add($f);
 
-        $f = $this->wire('modules')->get("InputfieldText");
+        $f = $this->data['allowOverrideimportSettings'] ? $this->wire('modules')->get("InputfieldText") : $this->wire('modules')->get("InputfieldHidden");
         $f->name = $fieldName . '_import_column_enclosure';
         $f->label = __('Column enclosure');
-        $f->value = '"';
+        $f->value = $this->data['importFieldEnclosure'];
         $f->columnWidth = 20;
         $fieldset->add($f);
 
-        $f = $this->wire('modules')->get("InputfieldCheckbox");
+        $f = $this->data['allowOverrideimportSettings'] ? $this->wire('modules')->get("InputfieldCheckbox") : $this->wire('modules')->get("InputfieldHidden");
         $f->name = $fieldName . '_convert_decimals';
         $f->label = __('Convert comma decimals to dots.');
         $f->notes = __('eg. 123,45 is converted to 123.45');
+        $f->attr('checked', ($this->data['importConvertDecimals']) ? 'checked' : '');
         $f->columnWidth = 20;
         $fieldset->add($f);
 
-        $f = $this->wire('modules')->get("InputfieldCheckbox");
+        $f = $this->data['allowOverrideimportSettings'] ? $this->wire('modules')->get("InputfieldCheckbox") : $this->wire('modules')->get("InputfieldHidden");
         $f->name = $fieldName . '_import_names_first_row';
         $f->label = __('Ignore the first row');
         $f->notes = __('Use this if the first row is column names');
+        $f->attr('checked', ($this->data['importIgnoreFirstRow']) ? 'checked' : '');
         $f->columnWidth = 20;
         $fieldset->add($f);
 
-        $f = $this->wire('modules')->get("InputfieldText");
+        $f = $this->data['allowOverrideimportSettings'] ? $this->wire('modules')->get("InputfieldText") : $this->wire('modules')->get("InputfieldHidden");
         $f->name = $fieldName . '_import_multiple_values_separator';
         $f->label = __('Multiple values separated with');
-        $f->notes = __('For tab separated, enter: tab.');
-        $f->value = ',';
+        $f->notes = __('Default is | Other useful options include \r for new lines.');
+        $f->value = $this->data['importMultipleValuesSeparator'];
         $f->columnWidth = 20;
         $fieldset->add($f);
 
@@ -143,10 +183,12 @@ class TableCsvImportExport extends WireData implements Module {
         $f = $this->wire('modules')->get("InputfieldMarkup");
         $f->label = __('Upload CSV File');
         $f->name = $fieldName . '_csv_upload';
-        $f->value = "<input name='".$event->object->name."_csv_file' type='file' />";
+        $f->value = "<input name='".$fieldName."_csv_file' type='file' />";
         $f->notes = __("File must have .csv, .tsv, or .txt extension\nBe sure you match the settings above to the format of your data");
         $f->collapsed = Inputfield::collapsedYes;
         $fieldset->add($f);
+
+
 
         $inputfields->add($fieldset);
 
@@ -158,6 +200,8 @@ class TableCsvImportExport extends WireData implements Module {
 
         // we're interested in page editor only
         if($this->wire('page')->process != 'ProcessPageEdit') return;
+
+        $p = $this->wire('process')->getPage();
         $fieldName = $event->object->name;
 
         $conf = $this->getModuleInfo();
@@ -172,65 +216,80 @@ class TableCsvImportExport extends WireData implements Module {
         $fieldset->description = __("Export the content of this table to a CSV file");
         $fieldset->collapsed = Inputfield::collapsedYes;
 
-        $f = $this->wire('modules')->get("InputfieldText");
+        $f = $this->data['allowOverrideexportSettings'] ? $this->wire('modules')->get("InputfieldText") : $this->wire('modules')->get("InputfieldHidden");
         $f->name = $fieldName . '_export_column_separator';
         $f->label = __('Columns separated with');
         $f->notes = __('For tab separated, enter: tab');
-        $f->value = ',';
+        $f->value = $this->data['exportFieldSeparator'];
         $f->columnWidth = 20;
         $fieldset->add($f);
 
-        $f = $this->wire('modules')->get("InputfieldText");
+        $f = $this->data['allowOverrideexportSettings'] ? $this->wire('modules')->get("InputfieldText") : $this->wire('modules')->get("InputfieldHidden");
         $f->name = $fieldName . '_export_column_enclosure';
         $f->label = __('Column enclosure');
-        $f->value = '"';
+        $f->value = $this->data['exportFieldEnclosure'];
         $f->columnWidth = 20;
         $fieldset->add($f);
 
-        $f = $this->wire('modules')->get("InputfieldText");
+        $f = $this->data['allowOverrideexportSettings'] ? $this->wire('modules')->get("InputfieldText") : $this->wire('modules')->get("InputfieldHidden");
         $f->name = $fieldName . '_export_extension';
         $f->label = __('File extension');
-        $f->value = 'csv';
+        $f->value = $this->data['exportExtension'];
         $f->columnWidth = 20;
         $fieldset->add($f);
 
-        $f = $this->wire('modules')->get("InputfieldCheckbox");
+        $f = $this->data['allowOverrideexportSettings'] ? $this->wire('modules')->get("InputfieldCheckbox") : $this->wire('modules')->get("InputfieldHidden");
         $f->name = $fieldName . '_export_names_first_row';
         $f->label = __('Put column names in the first row');
-        $f->attr('checked', 'checked');
+        $f->attr('checked', ($this->data['exportNamesFirstRow']) ? 'checked' : '' );
         $f->columnWidth = 20;
         $fieldset->add($f);
 
-        $f = $this->wire('modules')->get("InputfieldText");
+        $f = $this->data['allowOverrideexportSettings'] ? $this->wire('modules')->get("InputfieldText") : $this->wire('modules')->get("InputfieldHidden");
         $f->name = $fieldName . '_export_multiple_values_separator';
         $f->label = __('Multiple values separated with');
-        $f->notes = __('For tab separated, enter: tab. For line break in Excel, enter: \r');
-        $f->value = ',';
+        $f->notes = __('Default is | Other useful options include \r for new lines when importing into Excel.');
+        $f->value = $this->data['exportMultipleValuesSeparator'];
         $f->columnWidth = 20;
         $fieldset->add($f);
 
-        $f = $this->wire('modules')->get("InputfieldAsmSelect");
-        $f->name = $fieldName . '_export_columns';
-        $f->label = __('Columns / Order to Export');
-        $p = $this->wire('process')->getPage();
-        $i=1;
-        $columns = array();
-        foreach($p->$fieldName->columns as $col) {
-            if($col['name']) {
-                $f->addOption($i, $p->$fieldName->getLabel($i) ?: $col['name']);
-                $columns[] = $i;
-            }
-            $i++;
+        if($this->data['allowexportFilter']) {
+            $f = $this->wire('modules')->get("InputfieldSelector");
+            $f->name = $fieldName . '_table_rows_selector';
+            $f->label = __('Table rows selector');
+            $f->description = __('Optional selector to limit table rows. Leave empty to select all rows.');
+            $f->notes = __("These selectors will override any filters entered in the table 'Find' interface above.");
+            $f->counter = false;
+            $f->limitFields = array("$fieldName.");
+            $f->showFieldLabels = 1;
+            $f->addLabel = __('Add Column Filter');
+            $f->columnWidth = 100;
+            $fieldset->add($f);
         }
-        $f->value = $columns;
-        $fieldset->add($f);
+
+        if($this->data['allowexportColumns']) {
+            $f = $this->wire('modules')->get("InputfieldAsmSelect");
+            $f->name = $fieldName . '_export_columns';
+            $f->label = __('Columns / Order to Export');
+            $i=1;
+            $columns = array();
+            foreach($p->$fieldName->columns as $col) {
+                if($col['name']) {
+                    $f->addOption($i, $p->$fieldName->getLabel($i) ?: $col['name']);
+                    $columns[] = $i;
+                }
+                $i++;
+            }
+            $f->value = $columns;
+            $fieldset->add($f);
+        }
 
         $f = $this->wire('modules')->get("InputfieldButton");
         $f->name = $fieldName . '_export_button';
         $f->value = $this->_x('Export as CSV', 'button');
         $f->attr('class', 'ui-button ui-widget ui-corner-all ui-state-default export_csv');
         $f->attr('data-pageid', $p->id);
-        $f->attr('data-fieldname', $event->object->name);
+        $f->attr('data-fieldname', $fieldName);
         $fieldset->add($f);
 
         $f = $this->wire('modules')->get("InputfieldMarkup");
@@ -281,10 +340,22 @@ class TableCsvImportExport extends WireData implements Module {
 
         set_time_limit(3600 * 12);
 
+        if(!is_null($event)) {
+            $translatedOptions = array(
+                'delimiter' => $this->data['importFieldSeparator'],
+                'enclosure' => $this->data['importFieldEnclosure'],
+                'multipleValuesSeparator' => $this->data['importMultipleValuesSeparator'],
+                'namesFirstRow' => $this->data['importNamesFirstRow'],
+                'overwrite' => 'append'
+            );
+            $options = $event->arguments(2);
+            $options = array_merge($translatedOptions, $options);
+        }
+
         $initial_auto_detect_line_endings = ini_get('auto_detect_line_endings');
         ini_set('auto_detect_line_endings', true);
 
-        $fieldName = !is_null($event) ? $event->object->name : $this->wire('session')->fieldName;
+        $fieldName = !is_null($event) ? $event->arguments[0] : $this->wire('session')->fieldName;
 
         //actual field name is never mangled with a repeater extension
         $actualFieldName = (strpos($fieldName, '_repeater') !== FALSE) ? strstr($fieldName, '_repeater', true) : $fieldName;
@@ -301,7 +372,7 @@ class TableCsvImportExport extends WireData implements Module {
             $p = $this->wire('pages')->get($repeaterId);
         }
         else {
-            $p = !is_null($event) ? $event->object->page : $this->wire('process')->getPage();
+            $p = !is_null($event) ? $event->object : $this->wire('process')->getPage();
         }
 
         $p->of(false);
@@ -315,16 +386,16 @@ class TableCsvImportExport extends WireData implements Module {
             $tableRows = $p->$actualFieldName;
         }
 
-        $csvData = !is_null($event) ? $event->arguments(0) : $this->wire('session')->{$fieldName . '_csv_data'};
+        $csvData = !is_null($event) ? $event->arguments(1) : $this->wire('session')->{$fieldName . '_csv_data'};
         unset($this->wire('session')->{$fieldName . '_csv_data'});
-        $delimiter = !is_null($event) ? $event->arguments(1) : $this->wire('input')->post->{$fieldName . '_import_column_separator'};
-        $enclosure = !is_null($event) ? $event->arguments(2) : $this->wire('input')->post->{$fieldName . '_import_column_enclosure'};
-        $convertDecimals = !is_null($event) ? $event->arguments(3) : $this->wire('input')->post->{$fieldName . '_convert_decimals'};
+        $delimiter = !is_null($event) ? $options['delimiter'] : $this->wire('input')->post->{$fieldName . '_import_column_separator'};
+        $enclosure = !is_null($event) ? $options['enclosure'] : $this->wire('input')->post->{$fieldName . '_import_column_enclosure'};
+        $convertDecimals = !is_null($event) ? $options['convertDecimals'] : $this->wire('input')->post->{$fieldName . '_convert_decimals'};
         if($convertDecimals == 1) $convertDecimals = true;
-        $namesFirstRow = !is_null($event) ? $event->arguments(4) : $this->wire('input')->post->{$fieldName . '_import_names_first_row'};
+        $namesFirstRow = !is_null($event) ? $options['namesFirstRow'] : $this->wire('input')->post->{$fieldName . '_import_names_first_row'};
         if($namesFirstRow == 'checked') $namesFirstRow = true;
-        $importMultipleValuesSeparator = !is_null($event) ? $event->arguments(5) : $this->wire('input')->post->{$fieldName . '_import_multiple_values_separator'};
-        $overwrite = !is_null($event) ? $event->arguments(6) : $this->wire('input')->post->{$fieldName . '_append_overwrite'};
+        $importMultipleValuesSeparator = !is_null($event) ? $options['multipleValuesSeparator'] : $this->wire('input')->post->{$fieldName . '_import_multiple_values_separator'};
+        $overwrite = !is_null($event) ? $options['overwrite'] : $this->wire('input')->post->{$fieldName . '_append_overwrite'};
 
         if($overwrite == 'overwrite') {
             if($paginationLimit) {
@@ -423,6 +494,142 @@ class TableCsvImportExport extends WireData implements Module {
         else{
             return $value;
         }
+    }
+
+
+    /**
+     * Return an InputfieldsWrapper of Inputfields used to configure the class
+     *
+     * @param array $data Array of config values indexed by field name
+     * @return InputfieldsWrapper
+     *
+     */
+    public function getModuleConfigInputfields(array $data) {
+
+        $data = array_merge(self::getDefaultData(), $data);
+
+        $wrapper = new InputfieldWrapper();
+
+        $fieldset = $this->wire('modules')->get("InputfieldFieldset");
+        $fieldset->attr('id', 'import_settings');
+        $fieldset->label = __("Import settings");
+        $wrapper->add($fieldset);
+
+        $f = $this->wire('modules')->get("InputfieldText");
+        $f->name = 'importFieldSeparator';
+        $f->label = __('CSV fields separated with');
+        $f->description = __("If you want to paste directly from Excel, use 'tab' separated.");
+        $f->notes = __('For tab separated, enter: tab');
+        $f->value = $data['importFieldSeparator'];
+        $f->columnWidth = 20;
+        $fieldset->add($f);
+
+        $f = $this->wire('modules')->get("InputfieldText");
+        $f->name = 'importFieldEnclosure';
+        $f->label = __('CSV field enclosure');
+        $f->value = $data['importFieldEnclosure'];
+        $f->columnWidth = 20;
+        $fieldset->add($f);
+
+        $f = $this->wire('modules')->get("InputfieldCheckbox");
+        $f->name = 'importConvertDecimals';
+        $f->label = __('Convert comma decimals to dots.');
+        $f->notes = __('eg. 123,45 is converted to 123.45');
+        $f->attr('checked', ($data['importConvertDecimals']) ? 'checked' : '' );
+        $f->columnWidth = 20;
+        $fieldset->add($f);
+
+        $f = $this->wire('modules')->get("InputfieldCheckbox");
+        $f->attr('name', 'importNamesFirstRow');
+        $f->label = __('CSV ignore the first row');
+        $f->description = __('Use this if the first row contains column/field labels.');
+        $f->attr('checked', ($data['importNamesFirstRow']) ? 'checked' : '' );
+        $f->columnWidth = 20;
+        $fieldset->add($f);
+
+        $f = $this->wire('modules')->get("InputfieldText");
+        $f->attr('name', 'importMultipleValuesSeparator');
+        $f->label = __('Multiple values separator');
+        $f->description = __('Separator for multiple values like Page fields, etc.');
+        $f->notes = __('Default is | Other useful options include \r for new lines.');
+        $f->value = $data['importMultipleValuesSeparator'];
+        $f->columnWidth = 20;
+        $fieldset->add($f);
+
+        $f = $this->wire('modules')->get("InputfieldCheckbox");
+        $f->attr('name', 'allowOverrideimportSettings');
+        $f->label = __('Allow users to override CSV import settings');
+        $f->attr('checked', ($data['allowOverrideimportSettings']) ? 'checked' : '' );
+        $fieldset->add($f);
+
+        $fieldset = $this->wire('modules')->get("InputfieldFieldset");
+        $fieldset->attr('id', 'export_settings');
+        $fieldset->label = __("Export settings");
+        $wrapper->add($fieldset);
+
+        $f = $this->wire('modules')->get("InputfieldText");
+        $f->name = 'exportFieldSeparator';
+        $f->label = __('CSV fields separated with');
+        $f->notes = __('For tab separated, enter: tab');
+        $f->value = $data['exportFieldSeparator'];
+        $f->columnWidth = 20;
+        $fieldset->add($f);
+
+        $f = $this->wire('modules')->get("InputfieldText");
+        $f->name = 'exportFieldEnclosure';
+        $f->label = __('CSV field enclosure');
+        $f->value = $data['exportFieldEnclosure'];
+        $f->columnWidth = 20;
+        $fieldset->add($f);
+
+        $f = $this->wire('modules')->get("InputfieldText");
+        $f->name = 'exportExtension';
+        $f->label = __('File extension');
+        $f->value = $data['exportExtension'];
+        $f->columnWidth = 20;
+        $fieldset->add($f);
+
+        $f = $this->wire('modules')->get("InputfieldCheckbox");
+        $f->attr('name', 'exportNamesFirstRow');
+        $f->label = __('Column labels');
+        $f->label2 = __('Put column names in the first row');
+        $f->attr('checked', ($data['exportNamesFirstRow']) ? 'checked' : '' );
+        $f->columnWidth = 20;
+        $fieldset->add($f);
+
+        $f = $this->wire('modules')->get("InputfieldText");
+        $f->attr('name', 'exportMultipleValuesSeparator');
+        $f->label = __('Multiple values separator');
+        $f->description = __('Separator for multiple values like Page fields, files/images, multiplier, etc.');
+        $f->notes = __('Default is | Other useful options include \r for new lines when importing into Excel.');
+        $f->value = $data['exportMultipleValuesSeparator'];
+        $f->columnWidth = 20;
+        $fieldset->add($f);
+
+        $f = $this->wire('modules')->get("InputfieldCheckbox");
+        $f->attr('name', 'allowOverrideexportSettings');
+        $f->label = __('Allow users to override CSV export settings');
+        $f->attr('checked', ($data['allowOverrideexportSettings']) ? 'checked' : '' );
+        $f->columnWidth = 33;
+        $fieldset->add($f);
+
+        $f = $this->wire('modules')->get("InputfieldCheckbox");
+        $f->attr('name', 'allowexportFilter');
+        $f->label = __('Allow users to filter rows for export by column values');
+        $f->description = __('This is an InputfieldSelector interface added in addition to the standard Table "Find" functionality. This allows for more detailed searches.');
+        $f->attr('checked', ($data['allowexportFilter']) ? 'checked' : '' );
+        $f->columnWidth = 34;
+        $fieldset->add($f);
+
+        $f = $this->wire('modules')->get("InputfieldCheckbox");
+        $f->attr('name', 'allowexportColumns');
+        $f->label = __('Allow users to determine columns to export, and their order.');
+        $f->attr('checked', ($data['allowexportColumns']) ? 'checked' : '' );
+        $f->columnWidth = 33;
+        $fieldset->add($f);
+
+        return $wrapper;
+
     }
 
 }
