@@ -84,6 +84,18 @@ $(document).ready(function() {
 
     //$('.Inputfield_iframe').hide();
 
+    // preselect correct table field and then hide dropdown from selector row
+    $(".InputfieldSelector .selector-add").click(function() {
+        var fieldNameSelector = $(this).parents('.InputfieldSelector').attr('id').replace('wrap_Inputfield_', '');
+        var fieldName = fieldNameSelector.replace('_table_rows_selector', '');
+        var checkExist = setInterval(function() {
+            if ($('select[name="'+fieldNameSelector+'__field[]"]').last().length) {
+                $('select[name="'+fieldNameSelector+'__field[]"]').last().val(fieldName+'.').trigger('change').hide();
+                clearInterval(checkExist);
+            }
+        }, 100);
+    });
+
     $(document).on('click', '.export_csv', function(){
 
         var $input = $(this);
@@ -100,6 +112,7 @@ $(document).ready(function() {
             "&nfr="+$("#Inputfield_"+$(this).attr('data-fieldname')+"_export_names_first_row").attr('checked')+
             "&mvs="+$("#Inputfield_"+$(this).attr('data-fieldname')+"_export_multiple_values_separator").val()+
             "&cte="+$("#Inputfield_"+$(this).attr('data-fieldname')+"_export_columns").val()+
+            "&selector="+$("#Inputfield_"+$(this).attr('data-fieldname')+"_table_rows_selector").val()+
             "&filter="+encodeURIComponent(selector)+","
         );
         return false;
