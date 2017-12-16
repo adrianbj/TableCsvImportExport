@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => '2.0.2',
+            'version' => '2.0.3',
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -112,7 +112,7 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
 
         $fieldName = $event->object->name;
 
-        //actual field name is never mangled with a repeater extension
+        // actual field name is never mangled with a repeater extension
         $actualFieldName = (strpos($fieldName, '_repeater') !== FALSE) ? strstr($fieldName, '_repeater', true) : $fieldName;
 
         $inputfields = new InputfieldWrapper();
@@ -120,17 +120,20 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
         $fieldset = $this->wire('modules')->get("InputfieldFieldset");
         $fieldset->attr('id', $fieldName . '_import_csv');
         $fieldset->label = __("Import CSV");
-        $fieldset->description = __("The structure of the CSV must match the table fields. Import will happen on page save." . ($this->wire('fields')->get($actualFieldName)->allow_overwrite != 1 || !$this->wire('user')->hasPermission("table-csv-import-overwrite") ? "\nImported data will be appended to existing rows." : ""));
+        $fieldset->description = __("The structure of the CSV must match the table fields. Import will happen on page save. ");
+        if($this->wire('fields')->get($actualFieldName)->allow_overwrite != 1 || !$this->wire('user')->hasPermission("table-csv-import-overwrite")) {
+            $fieldset->description .= __("Imported data will be appended to existing rows");
+        }
         $fieldset->collapsed = Inputfield::collapsedYes;
 
-        if($this->wire('fields')->get($actualFieldName)->allow_overwrite == 1 && $this->wire('user')->hasPermission("table-csv-import-overwrite")){
+        if($this->wire('fields')->get($actualFieldName)->allow_overwrite == 1 && $this->wire('user')->hasPermission("table-csv-import-overwrite")) {
             $f = $this->wire('modules')->get("InputfieldSelect");
             $f->name = $fieldName . '_append_overwrite';
             $f->label = __('Append or Overwrite');
             $f->description = __("Determines whether to append new rows, or overwrite all existing rows.");
             $f->required = true;
-            $f->addOption("append", "Append");
-            $f->addOption("overwrite", "Overwrite");
+            $f->addOption("append", __('Append'));
+            $f->addOption("overwrite", __('Overwrite'));
             $fieldset->add($f);
         }
 
@@ -188,8 +191,6 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
         $f->notes = __("File must have .csv, .tsv, or .txt extension\nBe sure you match the settings above to the format of your data");
         $f->collapsed = Inputfield::collapsedYes;
         $fieldset->add($f);
-
-
 
         $inputfields->add($fieldset);
 
@@ -314,11 +315,11 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
         if($this->wire('input')->post->{$fieldName . '_csv_data'} == '' && $_FILES[$csv_filename]["name"] == '') return;
 
         //CSV file upload
-        if(isset($_FILES[$csv_filename]) && $_FILES[$csv_filename]["name"] !== ''){
+        if(isset($_FILES[$csv_filename]) && $_FILES[$csv_filename]["name"] !== '') {
 
             $csv_file_extension = pathinfo($_FILES[$csv_filename]["name"], PATHINFO_EXTENSION);
 
-            if($csv_file_extension == 'csv' || $csv_file_extension == 'txt' || $csv_file_extension == 'tsv'){
+            if($csv_file_extension == 'csv' || $csv_file_extension == 'txt' || $csv_file_extension == 'tsv') {
                 $this->wire('session')->{$fieldName . '_csv_data'} = file_get_contents($_FILES[$csv_filename]["tmp_name"]);
             }
             else{
@@ -337,7 +338,7 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
     }
 
 
-    public function importCsv($event = NULL){
+    public function importCsv($event = NULL) {
 
         set_time_limit(3600 * 12);
 
@@ -423,46 +424,45 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
         $rows->parse($csvData);
 
         $i=0;
-        foreach($p->$actualFieldName->columns as $subfield){
+        foreach($p->$actualFieldName->columns as $subfield) {
             $subfieldNames[$i] = $subfield['name']; //populate array of column/field names indexed in order so they can be used later to populate table
             $i++;
         }
 
-        foreach($rows->data as $data){
+        foreach($rows->data as $data) {
 
             $tableEntry = array();
 
             $c=1;
-            foreach($data as $subfieldKey => $fieldValue){
+            foreach($data as $subfieldKey => $fieldValue) {
 
                 // the $subfieldKey will often be the field name based on the first row of the CSV, but this might be wrong,
                 // so set it to the numeric key of the field so we can grab from $subfieldNames array
                 $subfieldKey = $c-1;
 
-                if($fieldValue != '') {
+                $currentColumnType = 'col'.$c.'type';
+                $currentColumnSelector = 'col'.$c.'selector';
+                $fieldType = $this->wire('fields')->$actualFieldName->$currentColumnType;
+                $fieldSelector = $this->wire('fields')->$actualFieldName->$currentColumnSelector;
 
-                    $currentColumnType = 'col'.$c.'type';
-                    $currentColumnSelector = 'col'.$c.'selector';
-                    $fieldType = $this->wire('fields')->$actualFieldName->$currentColumnType;
-                    $fieldSelector = $this->wire('fields')->$actualFieldName->$currentColumnSelector;
-
-                    if($fieldType == 'pageSelect' || $fieldType == 'pageRadios') {
-                        $tableEntry[$subfieldNames[$subfieldKey]] = $this->wire('pages')->get("{$fieldSelector}, title={$fieldValue}")->id;
-                    }
-                    elseif($fieldType == 'pageSelectMultiple' || $fieldType == 'pageAsmSelect' || $fieldType == 'pageCheckboxes') {
-                        foreach(explode($importMultipleValuesSeparator, $fieldValue) as $title) {
-                            $tableEntry[$subfieldNames[$subfieldKey]]->add($this->wire('pages')->get("{$fieldSelector}, title={$title}")->id);
-                        }
-                    }
-                    elseif($fieldType == 'selectMultiple') {
-                        $tableEntry[$subfieldNames[$subfieldKey]] = explode($importMultipleValuesSeparator, $fieldValue);
-                    }
-                    else {
-                        $tableEntry[$subfieldNames[$subfieldKey]] = $convertDecimals == true ? $this->convertDecimals($fieldValue) : $fieldValue;
+                if($fieldType == 'pageSelect' || $fieldType == 'pageRadios') {
+                    $tableEntry[$subfieldNames[$subfieldKey]] = $this->wire('pages')->get("{$fieldSelector}, title={$fieldValue}")->id;
+                }
+                elseif($fieldType == 'pageSelectMultiple' || $fieldType == 'pageAsmSelect' || $fieldType == 'pageCheckboxes') {
+                    foreach(explode($importMultipleValuesSeparator, $fieldValue) as $title) {
+                        $tableEntry[$subfieldNames[$subfieldKey]]->add($this->wire('pages')->get("{$fieldSelector}, title={$title}")->id);
                     }
                 }
+                elseif($fieldType == 'selectMultiple') {
+                    $tableEntry[$subfieldNames[$subfieldKey]] = explode($importMultipleValuesSeparator, $fieldValue);
+                }
+                else {
+                    $tableEntry[$subfieldNames[$subfieldKey]] = $convertDecimals == true ? $this->convertDecimals($fieldValue) : $fieldValue;
+                }
+
                 $c++;
             }
+
             $item = $tableRows->new($tableEntry);
             $tableRows->add($item);
             if($paginationLimit && ++$cnt >= $paginationLimit) {
@@ -484,7 +484,7 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
     }
 
 
-    public function convertDecimals($value){
+    private function convertDecimals($value) {
         // is the first character a number ?
         if(ctype_digit(substr($value, 0, 1))) {
             // 123,45 -> $match[0] else match is NULL
