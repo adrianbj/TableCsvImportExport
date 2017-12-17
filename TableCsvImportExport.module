@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => '2.0.4',
+            'version' => '2.0.5',
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -432,7 +432,7 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
         foreach($rows->data as $data) {
 
             // this handles populating missing columns from the end of the CSV with a null
-            while(count($data) !== count($subfieldNames)) {
+            while(count($data) < count($subfieldNames)) {
                 array_push($data, null);
             }
 
@@ -440,6 +440,9 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
 
             $c=1;
             foreach($data as $subfieldKey => $fieldValue) {
+
+                // if there are more columns in the CSV than columns in the table, skip the rest of this row
+                if($c > count($subfieldNames)) break;
 
                 // the $subfieldKey will often be the field name based on the first row of the CSV, but this might be wrong,
                 // so set it to the numeric key of the field so we can grab from $subfieldNames array
