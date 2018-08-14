@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => '2.0.5',
+            'version' => '2.0.6',
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -383,8 +383,9 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
         $paginationLimit = $tableField->get('paginationLimit');
 
         if($paginationLimit) {
-            $tableRows = new TableRows($p, $tableField);
-        } else {
+            $tableRows = class_exists('TableRows') ? new TableRows($p, $tableField) : new \ProcessWire\TableRows($p, $tableField);
+        }
+        else {
             $tableRows = $p->$actualFieldName;
         }
 
@@ -475,7 +476,7 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
             $tableRows->add($item);
             if($paginationLimit && ++$cnt >= $paginationLimit) {
                 $tablefieldtype->savePageFieldRows($p, $tableField, $tableRows);
-                $tableRows = new TableRows($p, $tableField);
+                $tableRows = class_exists('TableRows') ? new TableRows($p, $tableField) : new \ProcessWire\TableRows($p, $tableField);
                 $cnt = 0;
             }
         }
