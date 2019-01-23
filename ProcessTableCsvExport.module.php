@@ -6,7 +6,7 @@
  *
  * Helper process module for generating CSV from a Table field
  *
- * ProcessWire 2.x
+ * ProcessWire 3.x
  * Copyright (C) 2011 by Ryan Cramer
  * Licensed under GNU/GPL v2, see LICENSE.TXT
  *
@@ -26,7 +26,7 @@ class ProcessTableCsvExport extends Process implements Module {
     public static function getModuleInfo() {
         return array(
             'title' => __('Process Table CSV Export'),
-            'version' => '1.0.3',
+            'version' => '2.0.7',
             'summary' => __('Helper module for creating CSV to export'),
             'author' => 'Adrian Jones',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
@@ -42,8 +42,8 @@ class ProcessTableCsvExport extends Process implements Module {
             'permissions' => array(
                 'table-csv-export' => 'Access to Table CSV Export'
             ),
-            'requires' => 'TableCsvImportExport',
-            );
+            'requires' => 'TableCsvImportExport'
+        );
     }
 
 
@@ -148,8 +148,8 @@ class ProcessTableCsvExport extends Process implements Module {
         }
 
         $i=0;
-        foreach($rows as $row){
-            if($i==0 && $namesFirstRow == true){
+        foreach($rows as $row) {
+            if($i==0 && $namesFirstRow == true) {
                 foreach($orderedColumns as $colKey => $col) {
                     if(!$col['name']) continue;
                     $csv[$i][] = $col['name'];

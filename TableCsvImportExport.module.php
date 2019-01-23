@@ -6,7 +6,7 @@
  *
  * Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.
  *
- * ProcessWire 2.x
+ * ProcessWire 3.x
  * Copyright (C) 2011 by Ryan Cramer
  * Licensed under GNU/GPL v2, see LICENSE.TXT
  *
@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => '2.0.6',
+            'version' => '2.0.7',
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -31,7 +31,8 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
             'permissions' => array(
                 'table-csv-import' => 'Access to Table CSV Import',
                 'table-csv-import-overwrite' => 'Access to choose overwrite option when using Table CSV Import'
-            )
+            ),
+            'requiredBy' => 'ProcessTableCsvExport'
         );
     }
 
