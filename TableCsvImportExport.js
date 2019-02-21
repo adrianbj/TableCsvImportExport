@@ -120,6 +120,6 @@ $(document).ready(function() {
 
     // hack to make export button display when field visibility is Locked (not editable)
     // https://github.com/processwire/processwire-issues/issues/218
-    $("[class$=export_button]").css("display","block");
+    $("[class*=export_button]").css("display","block");
 
 });

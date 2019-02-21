@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => '2.0.7',
+            'version' => '2.0.8',
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
