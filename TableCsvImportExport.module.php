@@ -22,7 +22,7 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => '2.0.8',
+            'version' => '2.0.9',
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -460,7 +460,7 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
                 }
                 elseif($fieldType == 'pageSelectMultiple' || $fieldType == 'pageAsmSelect' || $fieldType == 'pageCheckboxes') {
                     foreach(explode($importMultipleValuesSeparator, $fieldValue) as $title) {
-                        $tableEntry[$subfieldNames[$subfieldKey]]->add($this->wire('pages')->get("{$fieldSelector}, title={$title}")->id);
+                        $tableEntry[$subfieldNames[$subfieldKey]][] = $this->wire('pages')->get("{$fieldSelector}, title={$title}")->id;
                     }
                 }
                 elseif($fieldType == 'selectMultiple') {

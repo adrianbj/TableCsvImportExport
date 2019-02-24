@@ -26,7 +26,7 @@ class ProcessTableCsvExport extends Process implements Module {
     public static function getModuleInfo() {
         return array(
             'title' => __('Process Table CSV Export'),
-            'version' => '2.0.8',
+            'version' => '2.0.9',
             'summary' => __('Helper module for creating CSV to export'),
             'author' => 'Adrian Jones',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
