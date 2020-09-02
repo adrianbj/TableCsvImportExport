@@ -6,12 +6,8 @@
  *
  * Helper process module for generating CSV from a Table field
  *
- * ProcessWire 3.x
- * Copyright (C) 2011 by Ryan Cramer
+ * Copyright (C) 2020 by Adrian Jones
  * Licensed under GNU/GPL v2, see LICENSE.TXT
- *
- * http://www.processwire.com
- * http://www.ryancramer.com
  *
  */
 
@@ -26,7 +22,7 @@ class ProcessTableCsvExport extends Process implements Module {
     public static function getModuleInfo() {
         return array(
             'title' => __('Process Table CSV Export'),
-            'version' => '2.0.9',
+            'version' => '2.0.10',
             'summary' => __('Helper module for creating CSV to export'),
             'author' => 'Adrian Jones',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',

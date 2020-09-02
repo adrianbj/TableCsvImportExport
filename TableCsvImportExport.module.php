@@ -6,12 +6,8 @@
  *
  * Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.
  *
- * ProcessWire 3.x
- * Copyright (C) 2011 by Ryan Cramer
+ * Copyright (C) 2020 by Adrian Jones
  * Licensed under GNU/GPL v2, see LICENSE.TXT
- *
- * http://www.processwire.com
- * http://www.ryancramer.com
  *
  */
 
@@ -22,7 +18,7 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => '2.0.9',
+            'version' => '2.0.10',
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -74,10 +70,18 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
     }
 
 
-    public function init() {
+    public function init() {}
+
+
+    public function ready() {
         $this->wire()->addHookAfter('InputfieldTable::getConfigInputfields', $this, 'hookAddConfig');
-        $this->wire()->addHookAfter('InputfieldTable::render', $this, 'buildForms'); // when edit enabled
-        if($this->wire('user')->hasPermission("table-csv-import")) $this->wire()->addHookAfter('InputfieldTable::processInput', $this, 'processImport');
+        if($this->wire('user')->hasPermission("table-csv-import")) {
+            $this->wire()->addHookAfter('InputfieldTable::render', $this, 'buildTableImportForm');
+            $this->wire()->addHookAfter('InputfieldTable::processInput', $this, 'processTableImport');
+        }
+        if($this->wire('user')->hasPermission("table-csv-export")) {
+            $this->wire()->addHookAfter('InputfieldTable::render', $this, 'buildTableExportForm');
+        }
         $this->wire()->addHook('Page::importTableCsv', $this, 'importCsv'); // not limited to table-csv-import permission because only relevant to front-end
     }
 
@@ -100,20 +104,14 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
     }
 
 
-    public function buildForms(HookEvent $event) {
-        if($this->wire('user')->hasPermission("table-csv-import")) $this->buildImportForm($event);
-        if($this->wire('user')->hasPermission("table-csv-export")) $this->buildExportForm($event);
-    }
-
-
-    public function buildImportForm(HookEvent $event) {
+    public function buildTableImportForm(HookEvent $event) {
 
         // we're interested in page editor only
         if($this->wire('page')->process != 'ProcessPageEdit') return;
 
         $fieldName = $event->object->name;
 
-        // actual field name is never mangled with a repeater extension
+        // actual field name is not mangled with a repeater extension
         $actualFieldName = (strpos($fieldName, '_repeater') !== FALSE) ? strstr($fieldName, '_repeater', true) : $fieldName;
 
         $inputfields = new InputfieldWrapper();
@@ -195,17 +193,28 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
 
         $inputfields->add($fieldset);
 
-        return $event->return .= $inputfields->render();
+        $event->return = $event->return . '<br />' . $inputfields->render();
     }
 
 
-    public function buildExportForm(HookEvent $event) {
+    public function buildTableExportForm(HookEvent $event) {
 
         // we're interested in page editor only
         if($this->wire('page')->process != 'ProcessPageEdit') return;
 
-        $p = $this->wire('process')->getPage();
         $fieldName = $event->object->name;
+
+        // actual field name is not mangled with a repeater extension
+        $actualFieldName = (strpos($fieldName, '_repeater') !== FALSE) ? strstr($fieldName, '_repeater', true) : $fieldName;
+
+        //get actual page, considering it might be a repeater
+        if($actualFieldName != $fieldName) $repeaterId = str_replace($actualFieldName . '_repeater', '', $fieldName);
+        if(isset($repeaterId)) {
+            $p = $this->wire('pages')->get($repeaterId);
+        }
+        else {
+            $p = $this->wire('process')->getPage();
+        }
 
         $conf = $this->getModuleInfo();
         $version = (int) $conf['version'];
@@ -276,9 +285,9 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
             $f->label = __('Columns / Order to Export');
             $i=1;
             $columns = array();
-            foreach($p->$fieldName->columns as $col) {
+            foreach($p->$actualFieldName->columns as $col) {
                 if($col['name']) {
-                    $f->addOption($i, $p->$fieldName->getLabel($i) ?: $col['name']);
+                    $f->addOption($i, $p->$actualFieldName->getLabel($i) ?: $col['name']);
                     $columns[] = $i;
                 }
                 $i++;
@@ -303,13 +312,22 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
 
         $inputfields->add($fieldset);
 
-        return $event->return .= $inputfields->render();
+        $event->return = $event->return . '<br />' . $inputfields->render();
     }
 
 
-    public function processImport(HookEvent $event) {
+    public function processTableImport(HookEvent $event) {
 
         $fieldName = $event->object->name;
+
+        //actual field name is not mangled with a repeater extension
+        $actualFieldName = (strpos($fieldName, '_repeater') !== FALSE) ? strstr($fieldName, '_repeater', true) : $fieldName;
+
+        // get table field object
+        $fieldType = $this->wire('fields')->get($actualFieldName)->type;
+
+        if($fieldType != 'FieldtypeTable') return;
+
         $this->wire('session')->fieldName = $fieldName;
         $csv_filename = $this->wire('session')->fieldName . '_csv_file';
 
@@ -360,7 +378,7 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
 
         $fieldName = !is_null($event) ? $event->arguments[0] : $this->wire('session')->fieldName;
 
-        //actual field name is never mangled with a repeater extension
+        //actual field name is not mangled with a repeater extension
         $actualFieldName = (strpos($fieldName, '_repeater') !== FALSE) ? strstr($fieldName, '_repeater', true) : $fieldName;
 
         // get table field object
