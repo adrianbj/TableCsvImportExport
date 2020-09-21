@@ -18,7 +18,7 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => '2.0.10',
+            'version' => '2.0.11',
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -287,8 +287,18 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
             $columns = array();
             foreach($p->$actualFieldName->columns as $col) {
                 if($col['name']) {
-                    $f->addOption($i, $p->$actualFieldName->getLabel($i) ?: $col['name']);
-                    $columns[] = $i;
+                    if(strpos($col['type'], 'page') !== false) {
+                        $sp = $this->wire('pages')->findOne($col['selector']);
+                        $f->addOption($col['name'] . '.id', ($p->$actualFieldName->getLabel($i) ?: $col['name']) . '.id');
+                        foreach($sp->template->fields as $subfield) {
+                            $f->addOption($col['name'] . '.' . $subfield, ($p->$actualFieldName->getLabel($i) ?: $col['name']) . '.' . $subfield);
+                        }
+                        $columns[] = $col['name'] . '.title';
+                    } else {
+                        $f->addOption($col['name'], $p->$actualFieldName->getLabel($i) ?: $col['name']);
+                        $columns[] = $col['name'];
+                    }
+
                 }
                 $i++;
             }

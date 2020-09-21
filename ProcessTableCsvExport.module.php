@@ -22,7 +22,7 @@ class ProcessTableCsvExport extends Process implements Module {
     public static function getModuleInfo() {
         return array(
             'title' => __('Process Table CSV Export'),
-            'version' => '2.0.10',
+            'version' => '2.0.11',
             'summary' => __('Helper module for creating CSV to export'),
             'author' => 'Adrian Jones',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
@@ -134,9 +134,16 @@ class ProcessTableCsvExport extends Process implements Module {
         if(empty($columnsToExport) || $columnsToExport == 'undefined') $columnsToExport = array_keys($columns);
 
         $columnsToExport = is_array($columnsToExport) ? $columnsToExport : explode(",", $columnsToExport);
+        $subfields = array();
         foreach($columnsToExport as $key => $val) {
             // if column names provided instead of indices
             if(!is_numeric($val)) {
+                if(strpos($val, '.') !== false) {
+                    $arr = explode(".", $val, 2);
+                    $val = $arr[0];
+                    $subfield = $arr[1];
+                    $subfields[$key] = $subfield;
+                }
                 $col = $p->$actualFieldName->getColumn($val);
                 $val = $col['sort'];
             }
@@ -148,7 +155,7 @@ class ProcessTableCsvExport extends Process implements Module {
             if($i==0 && $namesFirstRow == true) {
                 foreach($orderedColumns as $colKey => $col) {
                     if(!$col['name']) continue;
-                    $csv[$i][] = $col['name'];
+                    $csv[$i][] = $col['name'] . (isset($subfields[$colKey]) ? '.'.$subfields[$colKey] : '');
                 }
             }
 
@@ -158,13 +165,13 @@ class ProcessTableCsvExport extends Process implements Module {
                 $value = $row->{$col['name']};
                 $fieldType = $col['type'];
 
-                if($fieldType == 'pageSelect' || $fieldType == 'pageRadios') {
-                    $value = $value->title;
+                if($fieldType == 'pageSelect' || $fieldType == 'pageRadios'  || $fieldType == 'pageAutocomplete') {
+                    $value = $value->{$subfields[$colKey]};
                 }
-                elseif($fieldType == 'pageSelectMultiple' || $fieldType == 'pageAsmSelect' || $fieldType == 'pageCheckboxes') {
+                elseif($fieldType == 'pageSelectMultiple' || $fieldType == 'pageAsmSelect' || $fieldType == 'pageCheckboxes' || $fieldType == 'pageAutocompleteMultiple') {
                     $pageTitles = array();
                     foreach(explode('|', $value) as $v) {
-                        $pageTitles[] = $this->wire('pages')->get($v)->title;
+                        $pageTitles[] = $this->wire('pages')->get($v)->{$subfields[$colKey]};
                     }
                     $value = implode($multipleValuesSeparator, $pageTitles);
                 }
