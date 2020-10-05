@@ -18,7 +18,7 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => '2.0.11',
+            'version' => '2.0.12',
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -70,7 +70,9 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
     }
 
 
-    public function init() {}
+    public function init() {
+        $this->wire()->addHook('Page::importTableCsv', $this, 'importCsv'); // not limited to table-csv-import permission because only relevant to front-end
+    }
 
 
     public function ready() {
@@ -82,7 +84,6 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
         if($this->wire('user')->hasPermission("table-csv-export")) {
             $this->wire()->addHookAfter('InputfieldTable::render', $this, 'buildTableExportForm');
         }
-        $this->wire()->addHook('Page::importTableCsv', $this, 'importCsv'); // not limited to table-csv-import permission because only relevant to front-end
     }
 
 
