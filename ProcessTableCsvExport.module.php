@@ -22,7 +22,7 @@ class ProcessTableCsvExport extends Process implements Module {
     public static function getModuleInfo() {
         return array(
             'title' => __('Process Table CSV Export'),
-            'version' => '2.0.12',
+            'version' => '2.0.13',
             'summary' => __('Helper module for creating CSV to export'),
             'author' => 'Adrian Jones',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
@@ -72,13 +72,13 @@ class ProcessTableCsvExport extends Process implements Module {
 
     public function exportCsv($event = NULL) {
         if(!is_null($event)) {
-            $configSettings = wire('modules')->getModuleConfigData("TableCsvImportExport");
+            $configSettings = wire('modules')->getConfig("TableCsvImportExport");
             $translatedOptions = array(
-                'delimiter' => $configSettings['csvExportFieldSeparator'],
-                'enclosure' => $configSettings['csvExportFieldEnclosure'],
-                'extension' => $configSettings['csvExportExtension'],
+                'delimiter' => $configSettings['exportFieldSeparator'],
+                'enclosure' => $configSettings['exportFieldEnclosure'],
+                'extension' => $configSettings['exportExtension'],
                 'multipleValuesSeparator' => $configSettings['exportMultipleValuesSeparator'],
-                'namesFirstRow' => $configSettings['exportColumnsFirstRow'],
+                'namesFirstRow' => $configSettings['exportNamesFirstRow'],
                 'columns' => array(),
                 'filter' => null,
                 'selector' => null
