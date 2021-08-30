@@ -18,7 +18,7 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => '2.0.13',
+            'version' => '2.0.14',
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -445,7 +445,7 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
         // if there is no new line at the end, add one to fix issue if last item in CSV row has enclosures but others don't
         if(substr($csvData, -1) != "\r" && substr($csvData, -1) != "\n") $csvData .= PHP_EOL;
 
-        require_once __DIR__ . '/parsecsv.lib.php';
+        require_once __DIR__ . '/parsecsv-for-php/parsecsv.lib.php';
 
         $rows = new parseCSV();
         $rows->encoding('UTF-16', 'UTF-8');
