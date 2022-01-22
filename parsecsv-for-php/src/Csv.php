@@ -1248,7 +1248,7 @@ class Csv {
             $first = null;
             $equal = null;
             $almost = false;
-            foreach ($array as $key => $value) {
+            foreach ($array as $value) {
                 if ($first == null) {
                     $first = $value;
                 } elseif ($value == $first && $equal !== false) {
@@ -1261,7 +1261,7 @@ class Csv {
                 }
             }
 
-            if ($equal) {
+            if ($equal || $depth === 1) {
                 $match = $almost ? 2 : 1;
                 $pref = strpos($preferred, $char);
                 $pref = ($pref !== false) ? str_pad($pref, 3, '0', STR_PAD_LEFT) : '999';
@@ -1405,7 +1405,7 @@ class Csv {
             $is_newline = ($ch == "\n" && $pch != "\r") || $ch == "\r";
             if ($ch == $enclosure) {
                 if (!$enclosed || $nch != $enclosure) {
-                    $enclosed = $enclosed ? false : true;
+                    $enclosed = !$enclosed;
                 } elseif ($enclosed) {
                     $i++;
                 }

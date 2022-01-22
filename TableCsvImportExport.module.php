@@ -18,7 +18,7 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => '2.0.14',
+            'version' => '2.0.16',
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -88,6 +88,13 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
 
 
     public function hookAddConfig(HookEvent $event) {
+
+        // we're interested in field editor only
+        if($this->wire('page')->process != 'ProcessField') return;
+
+        // when using fields > import, it will be looking for a field that doesn't exist yet
+        $field = $this->wire('fields')->get($event->object->name);
+        if(!$field) return;
 
         // get existing inputfields from getConfigInputfields
         $inputfields = $event->return;
@@ -323,7 +330,7 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
 
         $inputfields->add($fieldset);
 
-        $event->return = $event->return . '<br />' . $inputfields->render();
+        $event->return = $event->return . '<style>.Inputfield_tableExportIframe { outline:none; }</style><br />' . $inputfields->render();
     }
 
 
