@@ -18,7 +18,7 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => '2.0.16',
+            'version' => '2.0.17',
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -391,9 +391,6 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
             $options = array_merge($translatedOptions, $options);
         }
 
-        $initial_auto_detect_line_endings = ini_get('auto_detect_line_endings');
-        ini_set('auto_detect_line_endings', true);
-
         $fieldName = !is_null($event) ? $event->arguments[0] : $this->wire('session')->fieldName;
 
         //actual field name is not mangled with a repeater extension
@@ -448,6 +445,9 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
             }
             $p->save($actualFieldName);
         }
+
+        $csvData = str_replace("\r\n", "\n", $csvData); // normalize Windows line endings
+        $csvData = str_replace("\r", "\n", $csvData);   // normalize old Mac line endings
 
         // if there is no new line at the end, add one to fix issue if last item in CSV row has enclosures but others don't
         if(substr($csvData, -1) != "\r" && substr($csvData, -1) != "\n") $csvData .= PHP_EOL;
@@ -524,8 +524,6 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
             $p->set($actualFieldName, $tableRows);
             $p->save($actualFieldName);
         }
-
-        ini_set('auto_detect_line_endings', $initial_auto_detect_line_endings);
 
     }
 

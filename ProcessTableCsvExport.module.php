@@ -22,7 +22,7 @@ class ProcessTableCsvExport extends Process implements Module {
     public static function getModuleInfo() {
         return array(
             'title' => __('Process Table CSV Export'),
-            'version' => '2.0.16',
+            'version' => '2.0.17',
             'summary' => __('Helper module for creating CSV to export'),
             'author' => 'Adrian Jones',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
@@ -64,7 +64,7 @@ class ProcessTableCsvExport extends Process implements Module {
     public function outputCSV($data, $delimiter, $enclosure) {
         $output = fopen("php://output", "w");
         foreach ($data as $row) {
-            fputcsv($output, $row, $delimiter == "tab" ? chr(9) : $delimiter, $enclosure);
+            fputcsv($output, $row, $delimiter == "tab" ? chr(9) : $delimiter, $enclosure, "");
         }
         fclose($output);
     }
