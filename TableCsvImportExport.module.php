@@ -18,7 +18,7 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => '2.0.17',
+            'version' => '2.0.18',
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -501,6 +501,14 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
                 }
                 elseif($fieldType == 'selectMultiple') {
                     $tableEntry[$subfieldNames[$subfieldKey]] = explode($importMultipleValuesSeparator, $fieldValue);
+                }
+                elseif($fieldType == 'image' || $fieldType == 'file') {
+                    if($fieldValue == '') {
+                        continue;
+                    }
+                    else {
+                        $tableEntry[$subfieldNames[$subfieldKey]] = $tablefieldtype->wakeupFile($p, $tableField, $fieldValue, $fieldType);
+                    }
                 }
                 else {
                     $tableEntry[$subfieldNames[$subfieldKey]] = $convertDecimals == true ? $this->convertDecimals($fieldValue) : $fieldValue;
