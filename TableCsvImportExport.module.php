@@ -18,7 +18,7 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
             'title' => 'Table CSV Import / Export',
             'summary' => 'Processwire module for admin and front-end importing and exporting of CSV formatted content for Profields Table fields.',
             'href' => 'http://modules.processwire.com/modules/table-csv-import-export/',
-            'version' => '2.0.18',
+            'version' => '2.0.19',
             'permanent' => false,
             'autoload' => 'template=admin',
             'singular' => true,
@@ -502,11 +502,23 @@ class TableCsvImportExport extends WireData implements Module, ConfigurableModul
                 elseif($fieldType == 'selectMultiple') {
                     $tableEntry[$subfieldNames[$subfieldKey]] = explode($importMultipleValuesSeparator, $fieldValue);
                 }
-                elseif($fieldType == 'image' || $fieldType == 'file') {
-                    if($fieldValue == '') {
-                        continue;
+                elseif($this->wire('languages') && strpos($fieldType, 'Language') !== false) {
+                    $langIds = array();
+                    foreach($this->wire('languages') as $lang) {
+                        $langIds[] = $lang->id;
                     }
-                    else {
+                    $i = 0;
+                    $fieldtypeTable = $this->wire('modules')->get('FieldtypeTable');
+                    $languageField = $fieldtypeTable->newLanguagesPageFieldValue($this->wire('page'), $tableField);
+                    foreach(explode($importMultipleValuesSeparator, $fieldValue) as $langValue) {
+                        $lang = $this->wire('languages')->get($langIds[$i]);
+                        $languageField->setLanguageValue($lang, $langValue);
+                        $i++;
+                    }
+                    $tableEntry[$subfieldNames[$subfieldKey]] = $languageField;
+                }
+                elseif($fieldType == 'image' || $fieldType == 'file') {
+                    if($fieldValue != '') {
                         $tableEntry[$subfieldNames[$subfieldKey]] = $tablefieldtype->wakeupFile($p, $tableField, $fieldValue, $fieldType);
                     }
                 }
